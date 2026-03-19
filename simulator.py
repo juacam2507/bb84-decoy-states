@@ -56,6 +56,7 @@ alice_bits = rng.integers(0,2, size = N)
 
 #Alices's Basis choice
 alice_basis = rng.integers(0, 2, size = N)
+print(alice_basis)
 
 #Alices pulse state choice
 signal_prob = 1 - decoy_rate
@@ -68,15 +69,39 @@ alice_state = rng.choice(
     size = N, 
     p = pulse_state_probs
     )
+#print(alice_state)
 
 #Now we need to simulate how Alice sends each pulse with a different photon number following a poissonian distribution
 
+alice_pulses = np.zeros(N, dtype=int)
+signal_mask = alice_state == 2
+decoy_mask = alice_state == 1
+# print(signal_mask)
+# print(decoy_mask)
+
+alice_pulses[signal_mask] = rng.poisson(mu, size = signal_mask.sum())
+alice_pulses[decoy_mask] = rng.poisson(nu, size = decoy_mask.sum())
+
+#print(alice_pulses)
+
+#The complete information can be condensed into a single array representing Alice
+
+source = [alice_bits, alice_basis, alice_state, alice_pulses]
+
+#Now we need to simulate detection. First, we define the basis choice for Bob
+
+bob_basis = rng.integers(0, 2, size = N)
+print(bob_basis)
+
+#We need to eliminate the indexes for which the basis are different. 
+
+sifted_index_mask = bob_basis == alice_basis
+
+print(sifted_index_mask)
 
 
-
-
-
-
+#We need to separate detection events into scenarios. If the basis coincide, the detection events can be separated as follows:
+#Scenario 1: 
 
     
 
