@@ -2,15 +2,40 @@ import numpy as np
 import random
 
 channel_properties = {
-    'alpha': 0.5,
-    'l': 10, 
-    'detector_efficiency': 0.1,
-    'bob_transmittance': 0.3, 
+    'alpha': 0.03,
+    'l': 5, 
+    'detector_efficiency': 0.5,
+    'bob_transmittance': 0.8, 
     'detector_error': 0.02,
-    'dark_count_rate': 1e-6
+    'y0': 1e-6,
+    'e0': 0.5
 }
 
-def channel_transmittance(alpha, l) -> float:
+def print_relative_frequencies(arr: np.ndarray) -> None:
+    """
+    Prints the relative frequency of each unique element in the array.
+    
+    Args:
+        arr: numpy array (any dtype, but typically numeric)
+    """
+    # Aplanar por si viene multidimensional
+    arr = arr.flatten()
+    
+    total = arr.size
+    
+    # Obtener valores únicos y sus conteos
+    values, counts = np.unique(arr, return_counts=True)
+    
+    print("=== Relative Frequencies ===")
+    print(f"Total elements: {total}\n")
+    
+    for val, count in zip(values, counts):
+        freq = count / total
+        print(f"Value {val:>5}: {count:>8} ({freq:.6f})")
+    
+    print("============================")
+
+def channel_transmittance(alpha : float, l: float) -> float:
     return 10 ** (-alpha * l / 10)
 
 def eta(channel_properties: dict) -> float:
@@ -28,7 +53,11 @@ nu = 0.5
 decoy_rate = 0.25
 vac_weak_rate = 0.5 # Vaccum pulses / # Weak pulses
 
+#Compute channel properties
 eta = eta(channel_properties)
+y_0 = channel_properties['y0']
+e_0 = channel_properties['e0']
+e_d = channel_properties['detector_error']
 # Alice's bits
 alice_bits = rng.integers(0,2, size = N)
 
@@ -89,20 +118,26 @@ bob_bits[bit_sift_mask] = -2 #Bits of the original sequence that have different 
 zero_photon_mask = (alice_pulses == 0) & (bob_bits != -2)
 non_zero_photon_mask = (alice_pulses != 0) & (bob_bits != -2)
 
-#Probability of detection of one photon: eta
-#Probability of not-detection of one photon: 1 - eta
-photon_detection_prob = 1 - eta
+bob_bits[zero_photon_mask] = -1
+ 
 
-bob_bits[zero_photon_mask] = rng.choice
 
 debug = True
 if debug:
+    print(eta)
     print(f"[DEBUG] Alice's bits: {alice_bits}")
+    print_relative_frequencies(alice_bits)
     print(f"[DEBUG] Alice's basis: {alice_basis}")
+    print_relative_frequencies(alice_basis)
     print(f"[DEBUG] Alice's state choice (decoy or signal): {alice_state}")
+    print_relative_frequencies(alice_state)
     print(f"[DEBUG] Photon number associated to each pulse: {alice_pulses}")
+    print_relative_frequencies(alice_pulses)
     print(f"[DEBUG] Bob's basis: {bob_basis}")
-    print(f"[DEBUG] Pulses with 0 photons and coincident basis:{zero_photon_mask}")
-    print(f"[DEBUG] Non equal basis index: {bit_sift_mask}")
+    print_relative_frequencies(bob_basis)
+    #print(f"[DEBUG] Pulses with 0 photons and coincident basis:{zero_photon_mask}")
+    #print(f"[DEBUG] Non equal basis index: {bit_sift_mask}")
     print(f"[DEBUG] Bob's Bits: {bob_bits}")
+    print_relative_frequencies(bob_bits)
+    print(f"[DEBUG] Detected's Bits: {detected}")
 
