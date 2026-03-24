@@ -139,5 +139,5 @@ if debug:
     #print(f"[DEBUG] Non equal basis index: {bit_sift_mask}")
     print(f"[DEBUG] Bob's Bits: {bob_bits}")
     print_relative_frequencies(bob_bits)
-    print(f"[DEBUG] Detected's Bits: {detected}")
+    #print(f"[DEBUG] Detected's Bits: {detected}")
 
