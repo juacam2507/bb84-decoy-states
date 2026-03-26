@@ -101,6 +101,24 @@ bob_basis = rng.integers(0, 2, size = N)
 
 bit_sift_mask = bob_basis != alice_basis #if True, basis are different. If False basis coincide.
 
+q = bit_sift_mask.sum()/N*1.0 #Compute basis coincidence rate
+
+#We implement a two detector model with D0 and D1.
+
+eta_n = 1 - (1 - eta)**alice_pulses
+
+p_corr_detection = (1 - e_d)*eta_n + (1 - e_0)*y_0
+p_err_detection =  e_d*eta_n + e_0*y_0 
+
+
+
+p_x = (1 - p_corr_detection)*(1 - p_err_detection)
+p_y = p_corr_detection*(1 - p_err_detection)
+p_z = (1 - p_corr_detection)*p_err_detection
+p_w = p_corr_detection*p_err_detection
+
+detection_probs = [p_x, p_y, p_z, p_w]
+
 bob_bits[bit_sift_mask] = -2 #Bits of the original sequence that have different basis choices are tagged with index -2. 
 
 #We need to separate detection events into scenarios. If the basis coincide, the detection events can be separated as follows:
@@ -120,6 +138,11 @@ non_zero_photon_mask = (alice_pulses != 0) & (bob_bits != -2)
 
 bob_bits[zero_photon_mask] = -1
  
+signal_click_prob = 1 - (1-eta)**alice_pulses
+
+rand_aux = np.random.random(size=N)
+
+detected_mask = (rand_aux < signal_click_prob) & (bob_bits >= 0)
 
 
 debug = True
@@ -133,11 +156,15 @@ if debug:
     print_relative_frequencies(alice_state)
     print(f"[DEBUG] Photon number associated to each pulse: {alice_pulses}")
     print_relative_frequencies(alice_pulses)
+    print(f"[DEBUG] Probability of detection for each pulse: {signal_click_prob}")
     print(f"[DEBUG] Bob's basis: {bob_basis}")
     print_relative_frequencies(bob_basis)
+    print(f"[DEBUG] Basis coincidence rate: {q}")
+    print(f"[DEBUG] Detection probabilities: {detection_probs}")
     #print(f"[DEBUG] Pulses with 0 photons and coincident basis:{zero_photon_mask}")
     #print(f"[DEBUG] Non equal basis index: {bit_sift_mask}")
     print(f"[DEBUG] Bob's Bits: {bob_bits}")
     print_relative_frequencies(bob_bits)
-    #print(f"[DEBUG] Detected's Bits: {detected}")
+    print(f"[DEBUG] Random choices for detection: {rand_aux}")
+    print(f"[DEBUG] Detected's Bits: {detected_mask}")
 
