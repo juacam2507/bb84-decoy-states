@@ -1,170 +1,215 @@
+from __future__ import annotations
 import numpy as np
-import random
+import matplotlib.pyplot as plt
+from dataclasses import dataclass
+from typing import Tuple, Dict
+from tqdm import tqdm
+from scipy.special import factorial
 
-channel_properties = {
-    'alpha': 0.03,
-    'l': 5, 
-    'detector_efficiency': 0.5,
-    'bob_transmittance': 0.8, 
-    'detector_error': 0.02,
-    'y0': 1e-6,
-    'e0': 0.5
-}
+# =========================
+# Parámetros
+# =========================
 
-def print_relative_frequencies(arr: np.ndarray) -> None:
+@dataclass
+class QKDParams:
+    alpha: float
+    eta_det: float
+    bob_loss: float
+    e_d: float
+    Y0: float
+    e0: float
+
+
+# =========================
+# Canal
+# =========================
+
+def channel_eta(params: QKDParams, distance: float) -> float:
+    return 10 ** (-params.alpha * distance / 10) * params.eta_det * params.bob_loss
+
+
+# =========================
+# Tabla de verdad (modelo base)
+# =========================
+
+def detection_probs(n: np.ndarray, eta: float, e_d: float, Y0: float, e0: float):
+    p_s = 1 - (1 - eta) ** n
+
+    P0 = (1 - e_d) * p_s + (1 - e0) * Y0
+    P1 = e_d * p_s + e0 * Y0
+
+
+    qx = (1 - P0) * (1 - P1)
+    qy = P0 * (1 - P1)
+    qz = (1 - P0) * P1
+    qw = P0 * P1
+
+    return qx, qy, qz, qw
+
+
+# =========================
+# MONTE CARLO
+# =========================
+
+def simulate_bb84(N, mu, nu, params: QKDParams, distance, rng):
+    eta = channel_eta(params, distance)
+
+    alice_bits = rng.integers(0, 2, N)
+    alice_basis = rng.integers(0, 2, N)
+
+    states = rng.choice([2,1,0], size=N, p=[0.75,0.125,0.125])
+
+    pulses = np.zeros(N, dtype=int)
+    pulses[states==2] = rng.poisson(mu, np.sum(states==2))
+    pulses[states==1] = rng.poisson(nu, np.sum(states==1))
+
+    bob_basis = rng.integers(0,2,N)
+    sift = alice_basis == bob_basis
+
+    qx,qy,qz,qw = detection_probs(pulses, eta, params.e_d, params.Y0, params.e0)
+
+    probs = np.vstack([qx,qy,qz,qw]).T
+
+    events = np.array([0,1,2,3])
+    sampled = np.array([rng.choice(events, p=p/np.sum(p)) for p in probs])
+
+    bob_bits = -np.ones(N)
+
+    correct = sampled==1
+    error = sampled==2
+    double = sampled==3
+
+    bob_bits[correct] = alice_bits[correct]
+    bob_bits[error] = 1 - alice_bits[error]
+    bob_bits[double] = rng.integers(0,2,np.sum(double))
+
+    valid = sift & (bob_bits!=-1)
+
+    Q = np.sum(valid)/N
+    QBER = np.mean(bob_bits[valid] != alice_bits[valid]) if np.sum(valid)>0 else 0
+
+    return Q, QBER
+
+
+# =========================
+# ANALÍTICO
+# =========================
+
+def analytic_gain_error(mu: float, eta: float, params: QKDParams, max_n=50):
     """
-    Prints the relative frequency of each unique element in the array.
-    
-    Args:
-        arr: numpy array (any dtype, but typically numeric)
+    Calcula Q_mu y E_mu analíticamente
     """
-    # Aplanar por si viene multidimensional
-    arr = arr.flatten()
-    
-    total = arr.size
-    
-    # Obtener valores únicos y sus conteos
-    values, counts = np.unique(arr, return_counts=True)
-    
-    print("=== Relative Frequencies ===")
-    print(f"Total elements: {total}\n")
-    
-    for val, count in zip(values, counts):
-        freq = count / total
-        print(f"Value {val:>5}: {count:>8} ({freq:.6f})")
-    
-    print("============================")
+    probs = [np.exp(-mu) * mu**n / factorial(n) for n in range(max_n)]
+    probs = np.array(probs)
 
-def channel_transmittance(alpha : float, l: float) -> float:
-    return 10 ** (-alpha * l / 10)
+    n_vals = np.arange(max_n)
 
-def eta(channel_properties: dict) -> float:
-    alpha = channel_properties['alpha']
-    l = channel_properties['l']
-    bob_transmittance = channel_properties['bob_transmittance']
-    detector_efficiency = channel_properties['detector_efficiency']
-    return channel_transmittance(alpha, l)*bob_transmittance*detector_efficiency
-   
-rng = np.random.default_rng()
+    qx,qy,qz,qw = detection_probs(n_vals, eta, params.e_d, params.Y0, params.e0)
 
-N = 100
-mu = 1
-nu = 0.5
-decoy_rate = 0.25
-vac_weak_rate = 0.5 # Vaccum pulses / # Weak pulses
+    Y_n = 1 - qx
+    e_n = (qz + 0.5*qw) / Y_n
+    e_n[Y_n == 0] = 0
 
-#Compute channel properties
-eta = eta(channel_properties)
-y_0 = channel_properties['y0']
-e_0 = channel_properties['e0']
-e_d = channel_properties['detector_error']
-# Alice's bits
-alice_bits = rng.integers(0,2, size = N)
+    Q = np.sum(probs * Y_n)
+    E = np.sum(probs * Y_n * e_n) / Q if Q>0 else 0
 
-#Alices's Basis choice
-alice_basis = rng.integers(0, 2, size = N)
+    return Q, E
 
 
-#Alices pulse state choice
-signal_prob = 1 - decoy_rate
-weak_prob = decoy_rate*(1 - vac_weak_rate)
-vac_prob = decoy_rate*vac_weak_rate
-pulse_state_probs = [signal_prob, weak_prob, vac_prob]
+# =========================
+# DECOY STATES
+# =========================
 
-alice_state = rng.choice(
-    [2, 1, 0], 
-    size = N, 
-    p = pulse_state_probs
+def decoy_estimation(mu, nu, Q_mu, Q_nu, Q_0, E_mu, E_nu):
+    Y0 = Q_0
+
+    Y1 = (mu/(mu*nu - nu**2)) * (
+        Q_nu*np.exp(nu) - (nu**2/mu**2)*Q_mu*np.exp(mu) - (1-nu**2/mu**2)*Y0
     )
 
-#Now we need to simulate how Alice sends each pulse with a different photon number following a poissonian distribution
+    e1 = (E_nu*Q_nu*np.exp(nu) - 0.5*Y0) / (nu*Y1)
 
-alice_pulses = np.zeros(N, dtype=int)
-signal_mask = alice_state == 2
-decoy_mask = alice_state == 1
-# print(signal_mask)
-# print(decoy_mask)
-
-alice_pulses[signal_mask] = rng.poisson(mu, size = signal_mask.sum())
-alice_pulses[decoy_mask] = rng.poisson(nu, size = decoy_mask.sum())
-
-#The complete information can be condensed into a single array representing Alice
-
-source = [alice_bits, alice_basis, alice_state, alice_pulses]
-
-#Now we need to simulate detection. First, we define the basis choice for Bob and initialize the bit sequence
-
-bob_bits = np.zeros(N, dtype=int)
-bob_basis = rng.integers(0, 2, size = N)
-
-#We need to eliminate the indexes for which the basis are different. 
-
-bit_sift_mask = bob_basis != alice_basis #if True, basis are different. If False basis coincide.
-
-q = bit_sift_mask.sum()/N*1.0 #Compute basis coincidence rate
-
-#We implement a two detector model with D0 and D1.
-
-eta_n = 1 - (1 - eta)**alice_pulses
-
-p_corr_detection = (1 - e_d)*eta_n + (1 - e_0)*y_0
-p_err_detection =  e_d*eta_n + e_0*y_0 
+    return max(Y1,0), max(e1,0)
 
 
+# =========================
+# KEY RATE
+# =========================
 
-p_x = (1 - p_corr_detection)*(1 - p_err_detection)
-p_y = p_corr_detection*(1 - p_err_detection)
-p_z = (1 - p_corr_detection)*p_err_detection
-p_w = p_corr_detection*p_err_detection
-
-detection_probs = [p_x, p_y, p_z, p_w]
-
-bob_bits[bit_sift_mask] = -2 #Bits of the original sequence that have different basis choices are tagged with index -2. 
-
-#We need to separate detection events into scenarios. If the basis coincide, the detection events can be separated as follows:
-#   Scenario 1: Alice sent an n-photon state
-#       - Sub-scenario 1: Bob detects nothing.
-#       - Sub-scenario 2: Bob detects one of the n photons. 
-#           - Sub-sub-scenario 1: Bob detects the photon in the incorrect detector so the bit is incorrect.
-#           - Sub-sub-scenario 2: Bob detects the photon in the correct detector. 
-#   Scenario 2: Alice sent nothing  
-#       - Subscenario 1: Bob detects nothing
-#       - Subscenario 2: Bob detects a dark count
-
-#First we need to sift the pulses that have 0 photons 
-
-zero_photon_mask = (alice_pulses == 0) & (bob_bits != -2)
-non_zero_photon_mask = (alice_pulses != 0) & (bob_bits != -2)
-
-bob_bits[zero_photon_mask] = -1
- 
-signal_click_prob = 1 - (1-eta)**alice_pulses
-
-rand_aux = np.random.random(size=N)
-
-detected_mask = (rand_aux < signal_click_prob) & (bob_bits >= 0)
+def H2(x):
+    if x<=0 or x>=1: return 0
+    return -x*np.log2(x)-(1-x)*np.log2(1-x)
 
 
-debug = True
-if debug:
-    print(eta)
-    print(f"[DEBUG] Alice's bits: {alice_bits}")
-    print_relative_frequencies(alice_bits)
-    print(f"[DEBUG] Alice's basis: {alice_basis}")
-    print_relative_frequencies(alice_basis)
-    print(f"[DEBUG] Alice's state choice (decoy or signal): {alice_state}")
-    print_relative_frequencies(alice_state)
-    print(f"[DEBUG] Photon number associated to each pulse: {alice_pulses}")
-    print_relative_frequencies(alice_pulses)
-    print(f"[DEBUG] Probability of detection for each pulse: {signal_click_prob}")
-    print(f"[DEBUG] Bob's basis: {bob_basis}")
-    print_relative_frequencies(bob_basis)
-    print(f"[DEBUG] Basis coincidence rate: {q}")
-    print(f"[DEBUG] Detection probabilities: {detection_probs}")
-    #print(f"[DEBUG] Pulses with 0 photons and coincident basis:{zero_photon_mask}")
-    #print(f"[DEBUG] Non equal basis index: {bit_sift_mask}")
-    print(f"[DEBUG] Bob's Bits: {bob_bits}")
-    print_relative_frequencies(bob_bits)
-    print(f"[DEBUG] Random choices for detection: {rand_aux}")
-    print(f"[DEBUG] Detected's Bits: {detected_mask}")
+def key_rate(mu, Q_mu, E_mu, Y1, e1):
+    return Q_mu*(-H2(E_mu)) + mu*np.exp(-mu)*Y1*(1-H2(e1))
 
+
+# =========================
+# SIMULACIÓN COMPLETA
+# =========================
+
+def run_simulation():
+    params = QKDParams(
+        alpha=0.35,
+        eta_det=0.5,
+        bob_loss=0.5,
+        e_d=0.02,
+        Y0=1e-6,
+        e0=0.7
+    )
+
+    distances = np.linspace(0,150,100)
+
+    mu, nu = 1.0, 0.5
+    N = 10000
+    iterations = 5
+
+    rng = np.random.default_rng()
+
+    rates_mc = []
+    rates_an = []
+
+    for d in tqdm(distances, desc="Distance sweep"):
+
+        # Monte Carlo promedio
+        R_accum = 0
+        for _ in range(iterations):
+            Q_mu, E_mu = simulate_bb84(N, mu, nu, params, d, rng)
+            Q_nu, E_nu = simulate_bb84(N, nu, nu, params, d, rng)
+            Q_0, _ = simulate_bb84(N, 0.0, nu, params, d, rng)
+
+            Y1, e1 = decoy_estimation(mu, nu, Q_mu, Q_nu, Q_0, E_mu, E_nu)
+            R = key_rate(mu, Q_mu, E_mu, Y1, e1)
+
+            R_accum += R
+
+        rates_mc.append(max(R_accum/iterations,1e-15))
+
+        # Analítico
+        eta = channel_eta(params, d)
+
+        Q_mu_a, E_mu_a = analytic_gain_error(mu, eta, params)
+        Q_nu_a, E_nu_a = analytic_gain_error(nu, eta, params)
+        Q_0_a, _ = analytic_gain_error(0.0, eta, params)
+
+        Y1_a, e1_a = decoy_estimation(mu, nu, Q_mu_a, Q_nu_a, Q_0_a, E_mu_a, E_nu_a)
+        R_a = key_rate(mu, Q_mu_a, E_mu_a, Y1_a, e1_a)
+
+        rates_an.append(max(R_a,1e-15))
+
+    # Plot
+    plt.figure()
+    plt.semilogy(distances, rates_mc, 'o-', label="Monte Carlo")
+    plt.semilogy(distances, rates_an, '-', label="Analítico")
+    plt.xlabel("Distance (km)")
+    plt.ylabel("Key Rate")
+    plt.legend()
+    plt.grid(True, which="both")
+    plt.title("QKD: Monte Carlo vs Analítico")
+    plt.savefig("key_rate_vs_distance.png")
+    plt.show()
+
+
+if __name__ == "__main__":
+    run_simulation()
