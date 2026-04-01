@@ -34,7 +34,7 @@ class Source:
             source_basis: Random array representing the base in which each bit will be encoded (0 = Rectilinear, 1 = Hadamard)
         """
         
-        source_basis = rng.integers(0, 2, self.N)
+        source_basis = self.rng.integers(0, 2, self.N)
         
         if self.debug:
             print(f'[DEBUG] Source basis: {source_basis}')
@@ -54,7 +54,7 @@ class Source:
         state_index = [0] + list(np.arange(1, decoy_num + 1))
         state_probs = [1 - self.decoy_rate] + [self.decoy_rate/decoy_num]*decoy_num  #Concatenation of arrays
 
-        state_sequence = rng.choice(state_index, size = self.N, p = state_probs)
+        state_sequence = self.rng.choice(state_index, size = self.N, p = state_probs)
         
         if self.debug:
             print(f'[DEBUG] State choice: {state_sequence}')
@@ -77,7 +77,7 @@ class Source:
         
         for i in range(len(intensities)):
             intensity_mask = state_choice == i
-            photon_nums[intensity_mask] = rng.poisson(intensities[i], size = np.sum(intensity_mask))
+            photon_nums[intensity_mask] = self.rng.poisson(intensities[i], size = np.sum(intensity_mask))
         
         
         if self.debug:
@@ -103,23 +103,5 @@ class Source:
         photon_nums = self.generate_photon_number_seq(source_state_seq)
         
         return source_bit_seq, source_basis_seq, source_state_seq, photon_nums
-
-
-
-
-
-simulation_parameters = {
-    "N" : 50,
-    "mu": 1.0,
-    "decoy_intensities" : [0.75, 0.5, 0.25, 0.0],
-    "decoy_rate" : 0.25,
-    "debug": True
-}
-
-rng = np.random.default_rng()
-
-alice = Source(simulation_parameters, rng)
-
-a1, a2, a3, a4 = alice.generate_pulses()
 
 
