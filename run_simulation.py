@@ -1,4 +1,4 @@
-gitimport numpy as np
+import numpy as np
 
 
 simulation_parameters = {
