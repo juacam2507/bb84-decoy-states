@@ -88,7 +88,7 @@ simulation_parameters = {
         "dark_count_error"      : 0.5               # Probability of dark counts triggering the wrong detector
         
     },
-    "debug": True
+    "debug": False
 }
 rng = np.random.default_rng()
 alice = Source(simulation_parameters, rng)
