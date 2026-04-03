@@ -127,15 +127,55 @@ class Detector:
 
         # We generate an auxiliary array of size Nx1 with random numbers between 0 and 1
 
-        aux = rng.random(size=(len(detection_probs), 1))
+        aux = self.rng.random(size=(len(detection_probs), 1))
         detection_event = (aux < cumulative_sum).argmax(axis=1)
 
         if self.debug:
             print(f"[DEBUG] Cumulative sum matrix: {cumulative_sum}")
-            print(f"[DEBUG] Randomly choice vector: {aux}")
+            print(f"[DEBUG] Random detection choice vector: {aux}")
             print(f"[DEBUG] Choosen detection event: {detection_event}")
 
         return detection_event
+
+    def generate_receptor_bits(
+        self, eta: float, photon_nums: np.ndarray, source_bits
+    ) -> np.ndarray:
+        """
+        Runs the detection event decision and computes bobs bits as follows:
+
+            detected == 0 => Assigns bit to -1 indicating no detection
+            detected == 1 => Assigns source_bit = receptor_bit
+            detected == 2 => Assigns receptor_bit = (source_bit + 1) % 2 (Bit flip)
+            detected == 3 => Tosses a coin and randomly assigns 0 or 1.
+
+        Args:
+            eta (np.ndarray): Channel efficiency
+            photon_nums (np.ndarray): Array containing the number of photons in the pulse
+            source_bits (_type_): Array containing Alice's bits
+
+        Returns:
+            receptor_bits (np.ndarray): Receptor's bit string
+        """
+        detection_event = self.detect_pulse(eta, photon_nums)
+
+        receptor_bits = np.zeros(self.N, dtype=int)
+
+        no_detection_mask = detection_event == 0
+        corr_detection_mask = detection_event == 1
+        errn_detection_mask = detection_event == 2
+        both_detection_mask = detection_event == 3
+
+        receptor_bits[no_detection_mask] = -1
+        receptor_bits[corr_detection_mask] = source_bits[corr_detection_mask]
+        receptor_bits[errn_detection_mask] = (source_bits[errn_detection_mask] + 1) % 2
+        receptor_bits[both_detection_mask] = self.rng.integers(
+            0, 2, size=np.sum(both_detection_mask)
+        )
+
+        if self.debug:
+            print(f"[DEBUG] Receptor bit array after detection: {receptor_bits}")
+
+        return receptor_bits
 
     def generate_basis_seq(self) -> np.ndarray:
         """
@@ -146,34 +186,7 @@ class Detector:
         """
         basis_seq = self.rng.integers(0, 2, size=self.N)
 
+        if self.debug:
+            print(f"[DEBUG] Receptor basis choice: {basis_seq}")
+
         return basis_seq
-
-
-simulation_parameters = {
-    "N": 100,  # Number of generated pulses
-    "mu": 1.0,  # Signal intensity
-    "decoy_intensities": [0.5, 0.0],  # Decoy intensities
-    "decoy_rate": 0.25,  # Decoy probability
-    "channel_properties": {
-        "beta": 0.3,  # Loss coefficient (dB/Km)
-        "l": 0.5,  # Channel lenght (Km)
-        "channel_loss": 0.8,  # Attenuation coefficient
-    },
-    "detector_properties": {
-        "receiver_transmit": 0.6,  # Receiver transmittance
-        "detector_efficiency": 0.47,  # Detector Efficiency
-        "detector_error": 0.3,  # Probability of a pulse measured in the correct basis to trigger the wrong detector
-        "dark_count_rate": 1e-6,  # Probability of dark counts
-        "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
-    },
-    "debug": True,
-}
-rng = np.random.default_rng()
-alice = Source(simulation_parameters, rng)
-_, _, _, photon_nums = alice.generate_pulses()
-
-bob = Detector(simulation_parameters, rng)
-
-eta = bob.channel_efficiency()
-
-p = bob.detect_pulse(eta, photon_nums)
