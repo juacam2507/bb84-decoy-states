@@ -66,7 +66,9 @@ class Source:
             state_probs
         )  # Normalization of probabilities
 
-        state_sequence = self.rng.choice(state_index, size=self.N, p=state_probs)
+        state_sequence = self.rng.choice(
+            np.asarray(state_index), size=self.N, p=state_probs
+        )
 
         if self.debug:
             print(f"[DEBUG] State choice: {state_sequence}")

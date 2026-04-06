@@ -18,8 +18,16 @@ class PostProcess:
         self.rng = rng
         self.debug = simulation_parameters["debug"]
 
+        self.signal_intensity = simulation_parameters["mu"]
+        self.decoy_intensities = simulation_parameters["decoy_intensities"]
+        self.state_num = 1 + len(self.decoy_intensities)
+
+        self.error_correction_efficiency = simulation_parameters[
+            "error_correction_efficiency"
+        ]
+
     def compute_state_gain(
-        self, bob_bits: np.ndarray, state_choice: np.ndarray, state: int = 0
+        self, receptor_bits: np.ndarray, state_choice: np.ndarray, state: int = 0
     ) -> float:
         """
         Computes the gain Q for a specific state (Vacuum, weak or decoy). The gain is defined as the probability of
@@ -28,7 +36,7 @@ class PostProcess:
         state choice (state_choice = 0, 1, 2, ...)
 
         Args:
-            detection_event (np.ndarray): Array with the detection event decision
+            receptor_bits (np.ndarray): Array with the detection event decision
             state_choice (np.ndarray): Alice's choice of states.
             state (int, optional): State for which the gain is to be computed. Defaults to 0.
 
@@ -37,7 +45,7 @@ class PostProcess:
         """
 
         state_mask = state_choice == state
-        state_detection_mask = (bob_bits != -1) & (state_mask)
+        state_detection_mask = (receptor_bits != -1) & (state_mask)
 
         states_sent = np.sum(state_mask)
         states_detected = np.sum(state_detection_mask)
@@ -48,6 +56,33 @@ class PostProcess:
             print(f"[DEBUG] Gain of state {state} = {states_detected/states_sent}")
 
         return states_detected / states_sent
+
+    def compute_gains(
+        self, receptor_bits: np.ndarray, state_choice: np.ndarray
+    ) -> list:
+        """
+        Computes the gains of all states in an output list.
+
+        Args:
+            receptor_bits (np.ndarray): Array with the detection event decision
+            state_choice (np.ndarray): Alice's choice of states.
+
+        Returns:
+            list: A list with the gains for each state. The index of the state coincides
+            with the index of the gain in the list.
+        """
+        gains = []
+
+        for i in range(self.state_num):
+            q = self.compute_state_gain(
+                receptor_bits=receptor_bits, state_choice=state_choice, state=i
+            )
+            gains.append(q)
+
+        if self.debug:
+            print(f"[DEBUG] Gains: {gains}")
+
+        return gains
 
     def basis_reconciliation(
         self, source_basis: np.ndarray, receptor_basis: np.ndarray
@@ -120,6 +155,127 @@ class PostProcess:
             )
         return num_state_err / num_states_detected
 
+    def compute_qbers(
+        self,
+        sifted_source_bits: np.ndarray,
+        sifted_receptor_bits: np.ndarray,
+        sifted_state_choice: np.ndarray,
+    ) -> list:
+        """
+        Computes the qbers of all states in an output list.
+
+        Args:
+            sifted_source_bits (np.ndarray): Source's bits after sifting basis
+            sifted_receptor_bits (np.ndarray): Receptor's bits after sifting basis
+            sifted_state_choice (np.ndarray): Choices of states after sifting basis
+
+        Returns:
+            list: A list with the gains for each state. The index of the state coincides
+            with the index of the gain in the list.
+        """
+        qbers = []
+
+        for i in range(self.state_num):
+            e = self.compute_state_qber(
+                sifted_receptor_bits=sifted_receptor_bits,
+                sifted_source_bits=sifted_source_bits,
+                sifted_state_choice=sifted_state_choice,
+                state=i,
+            )
+            qbers.append(e)
+
+        if self.debug:
+            print(f"[DEBUG] QBER: {qbers}")
+
+        return qbers
+
+    def background_yield_bound(self, gains: list) -> float:
+
+        if len(self.decoy_intensities) == 2:
+            nu_1 = self.decoy_intensities[0]
+            nu_2 = self.decoy_intensities[1]
+            Q_d1 = gains[1]
+            Q_d2 = gains[2]
+            y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / (
+                nu_1 - nu_2
+            )
+            if self.debug:
+                print(f"[DEBUG] Background yield lower bound: {y_0_l}")
+            return y_0_l
+        else:
+            return 0
+
+    def single_photon_yield_bound(self, gains: list, y_0_l: float) -> float:
+        if len(self.decoy_intensities) == 2:
+            mu = self.signal_intensity
+            nu_1 = self.decoy_intensities[0]
+            nu_2 = self.decoy_intensities[1]
+            Q_s = gains[0]
+            Q_d1 = gains[1]
+            Q_d2 = gains[2]
+
+            aux1 = mu / ((nu_1 - nu_2) * (mu - (nu_1 + nu_2)))
+            aux2 = Q_d1 * np.exp(nu_1) - Q_d2 * np.exp(nu_2)
+            aux3 = ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
+
+            y_1_l = (mu / ((nu_1 - nu_2) * (mu - (nu_1 + nu_2)))) * (
+                Q_d1 * np.exp(nu_1)
+                - Q_d2 * np.exp(nu_2)
+                - ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
+            )
+            if self.debug:
+                print(f"[DEBUG] Single photon yield lower bound: {y_1_l}")
+            return y_1_l
+        else:
+            return 0
+
+    def single_photon_error_bound(
+        self, gains: list, qbers: list, y_1_l: float
+    ) -> float:
+        if len(self.decoy_intensities) == 2:
+
+            nu_1 = self.decoy_intensities[0]
+            nu_2 = self.decoy_intensities[1]
+
+            Q_d1 = gains[1]
+            Q_d2 = gains[2]
+
+            E_d1 = qbers[1]
+            E_d2 = qbers[2]
+
+            e_1_u = (E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)) / (
+                (nu_1 - nu_2) * y_1_l
+            )
+
+            if self.debug:
+                print(f"[DEBUG] Single photon error upper bound: {e_1_u}")
+            return e_1_u
+        else:
+            return 0
+
+    def shannon_entropy(self, x: float):
+        if x > 0 and x < 1:
+            return -x * np.log2(x) - (1 - x) * np.log2(1 - x)
+        else:
+            return 0
+
+    def secure_key_rate(
+        self, gains: list, qbers: list, y_1_l: float, e_1_u: float
+    ) -> float:
+        mu = self.signal_intensity
+        Q_s = gains[0]
+        E_s = qbers[0]
+
+        Q_1 = y_1_l * mu * np.exp(-mu)
+
+        R = 0.5 * (
+            -Q_s * self.error_correction_efficiency * self.shannon_entropy(E_s)
+            + Q_1 * (1 - self.shannon_entropy(e_1_u))
+        )
+        if self.debug:
+            print(f"[DEBUG] Secure Key Rate: {R}")
+        return R
+
 
 simulation_parameters = {
     "N": 1000000,  # Number of generated pulses
@@ -138,6 +294,7 @@ simulation_parameters = {
         "dark_count_rate": 1e-6,  # Probability of dark counts
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
+    "error_correction_efficiency": 1.0,
     "debug": True,
 }
 rng = np.random.default_rng()
@@ -150,16 +307,20 @@ bob_bits = bob.generate_receptor_bits(eta, photon_nums, alice_bits)
 bob_basis = bob.generate_basis_seq()
 
 post_process = PostProcess(simulation_parameters, rng)
-signal_gain = post_process.compute_state_gain(bob_bits, state_choice, 0)
+gains = post_process.compute_gains(bob_bits, state_choice)
 matching_basis_mask = post_process.basis_reconciliation(alice_basis, bob_basis)
 
 sifted_alice_bits = alice_bits[matching_basis_mask]
 sifted_bob_bits = bob_bits[matching_basis_mask]
 sifted_state_choice = state_choice[matching_basis_mask]
 
-signal_qber = post_process.compute_state_qber(
+qbers = post_process.compute_qbers(
     sifted_source_bits=sifted_alice_bits,
     sifted_receptor_bits=sifted_bob_bits,
     sifted_state_choice=sifted_state_choice,
-    state=0,
 )
+
+y_0_l = post_process.background_yield_bound(gains=gains)
+y_1_l = post_process.single_photon_yield_bound(gains=gains, y_0_l=y_0_l)
+e_1_u = post_process.single_photon_error_bound(gains=gains, qbers=qbers, y_1_l=y_1_l)
+R = post_process.secure_key_rate(gains=gains, qbers=qbers, y_1_l=y_1_l, e_1_u=e_1_u)
