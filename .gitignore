@@ -1,0 +1,17 @@
+#ignore pycache folder
+__pycache__/
+
+#Ignore results
+data/
+*.csv
+*.npy
+*.pkl
+*.h5
+*.log
+
+*.png
+*.pdf
+#Ignore environments
+venv/
+env/
+venv_*/
