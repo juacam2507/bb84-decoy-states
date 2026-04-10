@@ -9,12 +9,11 @@ class Simulator:
         
         self.simulation_parameters = simulation_parameters
         self.rng = rng
-        self.iter = simulation_parameters["Iterations"]
         self.state_num = len(simulation_parameters["decoy_intensities"]) + 1
         self.debug = simulation_parameters["debug"]
 
     
-    def run(self, l: float) -> tuple: 
+    def run(self, l: float, iter: int) -> float: 
         
         #Declare objects
         alice = Source(self.simulation_parameters, self.rng)
@@ -26,7 +25,7 @@ class Simulator:
         Q_av =  np.zeros(self.state_num, dtype=float)
         E_av =  np.zeros(self.state_num, dtype=float)
             
-        for iter in tqdm(range(self.iter), desc = "Iterations"):
+        for iter in tqdm(range(iter), desc = "Iterations"):
             
             #Generate the photon pulse for Alice
             alice_bits, alice_basis, state_choice, photon_nums = alice.generate_pulses()
@@ -56,12 +55,12 @@ class Simulator:
             Q_cum += gains
             E_cum += qbers 
             
-        Q_av = Q_cum/self.iter
-        E_av = E_cum/self.iter
+        Q_av = Q_cum/iter
+        E_av = E_cum/iter
         
         if self.debug: 
-            print(f"[DEBUG] Average gains after {self.iter} iterations: {Q_av}")
-            print(f"[DEBUG] Average QBER after {self.iter} iterations: {E_av}")
+            print(f"[DEBUG] Average gains after {iter} iterations: {Q_av}")
+            print(f"[DEBUG] Average QBER after {iter} iterations: {E_av}")
             
         #Compute the thresholds to calculate the secure Key rate. 
         y_0_l = post_process.background_yield_bound(gains=Q_av)

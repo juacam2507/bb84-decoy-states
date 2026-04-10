@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Leer archivo CSV como array 2D
-data = np.genfromtxt('data.csv', delimiter=',', skip_header=1)
+data = np.genfromtxt('data/data_20260410_124020_100_1000000.csv', delimiter=',', skip_header=1)
 
 distances = data[:, 0]        # primera columna
 key_rates = data[:, 1]   # segunda columna
