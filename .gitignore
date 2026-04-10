@@ -1,5 +1,8 @@
 #ignore pycache folder
 __pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
 
 #Ignore results
 data/
