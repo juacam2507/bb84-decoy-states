@@ -1,6 +1,4 @@
 import numpy as np
-from source import Source
-from detector import Detector
 
 
 class PostProcess:
@@ -19,7 +17,7 @@ class PostProcess:
         self.debug = simulation_parameters["debug"]
 
         self.signal_intensity = simulation_parameters["mu"]
-        self.decoy_intensities = simulation_parameters["decoy_intensities"]
+        self.decoy_intensities = tuple(simulation_parameters["decoy_intensities"])
         self.state_num = 1 + len(self.decoy_intensities)
 
         self.error_correction_efficiency = simulation_parameters[
@@ -71,13 +69,13 @@ class PostProcess:
             list: A list with the gains for each state. The index of the state coincides
             with the index of the gain in the list.
         """
-        gains = []
+        gains = np.array([], dtype=float)
 
         for i in range(self.state_num):
             q = self.compute_state_gain(
                 receptor_bits=receptor_bits, state_choice=state_choice, state=i
             )
-            gains.append(q)
+            gains = np.append(gains, q)
 
         if self.debug:
             print(f"[DEBUG] Gains: {gains}")
@@ -173,7 +171,7 @@ class PostProcess:
             list: A list with the gains for each state. The index of the state coincides
             with the index of the gain in the list.
         """
-        qbers = []
+        qbers = np.array([], dtype=float)
 
         for i in range(self.state_num):
             e = self.compute_state_qber(
@@ -182,7 +180,7 @@ class PostProcess:
                 sifted_state_choice=sifted_state_choice,
                 state=i,
             )
-            qbers.append(e)
+            qbers = np.append(qbers, e)
 
         if self.debug:
             print(f"[DEBUG] QBER: {qbers}")
@@ -191,67 +189,80 @@ class PostProcess:
 
     def background_yield_bound(self, gains: list) -> float:
 
-        if len(self.decoy_intensities) == 2:
-            nu_1 = self.decoy_intensities[0]
-            nu_2 = self.decoy_intensities[1]
-            Q_d1 = gains[1]
-            Q_d2 = gains[2]
-            y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / (
-                nu_1 - nu_2
-            )
-            if self.debug:
-                print(f"[DEBUG] Background yield lower bound: {y_0_l}")
-            return y_0_l
-        else:
-            return 0
+        if len(self.decoy_intensities) != 2:
+            return 0.0
+
+        nu_1, nu_2 = self.decoy_intensities
+
+        Q_d1, Q_d2 = gains[1], gains[2]
+
+        denom = nu_1 - nu_2
+
+        if denom <= 0:
+            print(f"[DEBUG] Final Y0_L: {0.0}")
+            return 0.0
+
+        y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / denom
+        if self.debug:
+            print(f"[DEBUG] Computed Y0_L: {y_0_l}")
+            print(f"[DEBUG] Final Y0_L: {np.clip(y_0_l, 0.0, 1.0)}")
+
+        return float(
+            np.clip(y_0_l, 0.0, 1.0)
+        )  # Bounds the yield to values between 0 and 1
 
     def single_photon_yield_bound(self, gains: list, y_0_l: float) -> float:
-        if len(self.decoy_intensities) == 2:
-            mu = self.signal_intensity
-            nu_1 = self.decoy_intensities[0]
-            nu_2 = self.decoy_intensities[1]
-            Q_s = gains[0]
-            Q_d1 = gains[1]
-            Q_d2 = gains[2]
+        if len(self.decoy_intensities) != 2:
+            return 0.0
 
-            aux1 = mu / ((nu_1 - nu_2) * (mu - (nu_1 + nu_2)))
-            aux2 = Q_d1 * np.exp(nu_1) - Q_d2 * np.exp(nu_2)
-            aux3 = ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
+        mu = self.signal_intensity
+        nu_1, nu_2 = self.decoy_intensities
+        Q_s, Q_d1, Q_d2 = gains[0], gains[1], gains[2]
 
-            y_1_l = (mu / ((nu_1 - nu_2) * (mu - (nu_1 + nu_2)))) * (
-                Q_d1 * np.exp(nu_1)
-                - Q_d2 * np.exp(nu_2)
-                - ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
-            )
-            if self.debug:
-                print(f"[DEBUG] Single photon yield lower bound: {y_1_l}")
-            return y_1_l
-        else:
-            return 0
+        denom = (nu_1 - nu_2) * (mu - (nu_1 + nu_2))
+
+        if denom <= 0:
+            return 0.0
+
+        y_1_l = (mu / denom) * (
+            Q_d1 * np.exp(nu_1)
+            - Q_d2 * np.exp(nu_2)
+            - ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
+        )
+        if self.debug:
+            print(f"[DEBUG] Computed Y1_L: {y_1_l}")
+            print(f"[DEBUG] Final Y1_L: {y_1_l}")
+
+        return float(np.clip(y_1_l, 0.0, 1.0))
 
     def single_photon_error_bound(
         self, gains: list, qbers: list, y_1_l: float
     ) -> float:
-        if len(self.decoy_intensities) == 2:
-
-            nu_1 = self.decoy_intensities[0]
-            nu_2 = self.decoy_intensities[1]
-
-            Q_d1 = gains[1]
-            Q_d2 = gains[2]
-
-            E_d1 = qbers[1]
-            E_d2 = qbers[2]
-
-            e_1_u = (E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)) / (
-                (nu_1 - nu_2) * y_1_l
-            )
-
+        if len(self.decoy_intensities) != 2 or y_1_l <= 0.0:
             if self.debug:
-                print(f"[DEBUG] Single photon error upper bound: {e_1_u}")
-            return e_1_u
-        else:
-            return 0
+                print(f"[DEBUG] Final e1_u: {0.5}")
+            return 0.5
+
+        nu_1, nu_2 = self.decoy_intensities
+
+        Q_d1, Q_d2 = gains[1], gains[2]
+
+        E_d1, E_d2 = qbers[1], qbers[2]
+
+        denom = (nu_1 - nu_2) * y_1_l
+
+        if denom <= 0.0:
+            if self.debug:
+                print(f"[DEBUG] Final e1_u: {0.5}")
+            return 0.5
+
+        e_1_u = (E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)) / denom
+
+        if self.debug:
+            print(f"[DEBUG] Computed e1_u: {e_1_u}")
+            print(f"[DEBUG] Final e1_u: {float(np.clip(e_1_u, 0.0, 0.5))}")
+
+        return float(np.clip(e_1_u, 0.0, 0.5))
 
     def shannon_entropy(self, x: float):
         if x > 0 and x < 1:
@@ -266,61 +277,14 @@ class PostProcess:
         Q_s = gains[0]
         E_s = qbers[0]
 
-        Q_1 = y_1_l * mu * np.exp(-mu)
+        Q_1 = max(0.0, y_1_l * mu * np.exp(-mu))
 
         R = 0.5 * (
             -Q_s * self.error_correction_efficiency * self.shannon_entropy(E_s)
             + Q_1 * (1 - self.shannon_entropy(e_1_u))
         )
         if self.debug:
-            print(f"[DEBUG] Secure Key Rate: {R}")
-        return R
+            print(f"[DEBUG] Computed Secure Key Rate: {R}")
+            print(f"[DEBUG] Final Secure Key Rate: {max(0.0, float(R))}")
 
-
-simulation_parameters = {
-    "N": 1000000,  # Number of generated pulses
-    "mu": 1.0,  # Signal intensity
-    "decoy_intensities": [0.5, 0.0],  # Decoy intensities
-    "decoy_rate": 0.2,  # Decoy probability
-    "channel_properties": {
-        "beta": 0.2,  # Loss coefficient (dB/Km)
-        "l": 20,  # Channel lenght (Km)
-        "channel_loss": 0.8,  # Attenuation coefficient
-    },
-    "detector_properties": {
-        "receiver_transmit": 0.045,  # Receiver transmittance
-        "detector_efficiency": 0.47,  # Detector Efficiency
-        "detector_error": 0.033,  # Probability of a pulse measured in the correct basis to trigger the wrong detector
-        "dark_count_rate": 1e-6,  # Probability of dark counts
-        "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
-    },
-    "error_correction_efficiency": 1.0,
-    "debug": True,
-}
-rng = np.random.default_rng()
-alice = Source(simulation_parameters, rng)
-alice_bits, alice_basis, state_choice, photon_nums = alice.generate_pulses()
-
-bob = Detector(simulation_parameters, rng)
-eta = bob.channel_efficiency()
-bob_bits = bob.generate_receptor_bits(eta, photon_nums, alice_bits)
-bob_basis = bob.generate_basis_seq()
-
-post_process = PostProcess(simulation_parameters, rng)
-gains = post_process.compute_gains(bob_bits, state_choice)
-matching_basis_mask = post_process.basis_reconciliation(alice_basis, bob_basis)
-
-sifted_alice_bits = alice_bits[matching_basis_mask]
-sifted_bob_bits = bob_bits[matching_basis_mask]
-sifted_state_choice = state_choice[matching_basis_mask]
-
-qbers = post_process.compute_qbers(
-    sifted_source_bits=sifted_alice_bits,
-    sifted_receptor_bits=sifted_bob_bits,
-    sifted_state_choice=sifted_state_choice,
-)
-
-y_0_l = post_process.background_yield_bound(gains=gains)
-y_1_l = post_process.single_photon_yield_bound(gains=gains, y_0_l=y_0_l)
-e_1_u = post_process.single_photon_error_bound(gains=gains, qbers=qbers, y_1_l=y_1_l)
-R = post_process.secure_key_rate(gains=gains, qbers=qbers, y_1_l=y_1_l, e_1_u=e_1_u)
+        return max(0.0, float(R))

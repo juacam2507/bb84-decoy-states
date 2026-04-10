@@ -1,9 +1,8 @@
 import numpy as np
-from source import Source
 
 
 class Detector:
-    def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
+    def __init__(self, simulation_parameters: dict, rng: np.random.Generator, l: float):
         """
         Initialize a photon detector object for the BB84 simulation. The detector is modeled
         as a two detector model with the respective probability for the 4 possible events.
@@ -11,13 +10,14 @@ class Detector:
         Args:
             simulation_parameters (dict): Dictionary containing the simulation parameters
             rng (np.random.Generator): Random number generator
+            l (float): Distance of the channel
         """
 
         self.N = simulation_parameters["N"]
         self.rng = rng
         self.debug = simulation_parameters["debug"]
 
-        self.l = simulation_parameters["channel_properties"]["l"]
+        self.l = l
         self.beta = simulation_parameters["channel_properties"]["beta"]
 
         self.t_bob = simulation_parameters["detector_properties"]["receiver_transmit"]
@@ -94,6 +94,7 @@ class Detector:
         # probabilities are [N,1] arrays so they are joined on a [N,4] matrix:
 
         detection_probs = np.column_stack([p_none, p_corr, p_errn, p_both])
+        detection_probs = np.clip(detection_probs, 0.0, 1.0) #normalizes the range 
 
         if self.debug:
             print(f"[DEBUG] Probability matrix: {detection_probs}")
