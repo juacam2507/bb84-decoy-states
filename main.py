@@ -7,8 +7,8 @@ import json
 import os
 
 simulation_parameters = {
-    "Iterations": 100,
-    "N": 50_000_000,  # Number of generated pulses
+    "Iterations": 1,
+    "N": 1_000_000,  # Number of generated pulses
     "mu": 0.5,  # Signal intensity
     "decoy_intensities": [0.1, 0.0],  # Decoy intensities
     "decoy_rate": 0.3,  # Decoy probability
@@ -65,7 +65,7 @@ timestamp = datetime.now()
 meta = simulation_parameters.copy()
 meta["time"] = timestamp.strftime("%Y/%m/%d - %H:%M:%S")
 
-filename = f"data_{timestamp.strftime("%Y%m%d_%H%M%S")}_{iter}_{simulation_parameters["N"]}.csv"
+filename = f"data_{timestamp.strftime('%Y%m%d_%H%M%S')}_{iter}_{simulation_parameters['N']}.csv"
 filepath = os.path.join(data_dir, filename)
 
 

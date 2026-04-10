@@ -4,13 +4,29 @@ import numpy as np
 class Detector:
     def __init__(self, simulation_parameters: dict, rng: np.random.Generator, l: float):
         """
-        Initialize a photon detector object for the BB84 simulation. The detector is modeled
-        as a two detector model with the respective probability for the 4 possible events.
+        Initialize the photon detector for BB84 decoy-state QKD simulation.
 
-        Args:
-            simulation_parameters (dict): Dictionary containing the simulation parameters
-            rng (np.random.Generator): Random number generator
-            l (float): Distance of the channel
+        Models a two-detector system with channel loss, detector efficiency,
+        dark counts, and intrinsic error rates. Computes overall channel efficiency
+        based on fiber attenuation and receiver optics.
+
+        Parameters
+        ----------
+        simulation_parameters : dict
+            Configuration dictionary with required keys:
+            - "N": int, number of pulses.
+            - "debug": bool, enable verbose output.
+            - "channel_properties": dict with "beta": float (dB/km loss coefficient).
+            - "detector_properties": dict with:
+                - "receiver_transmit": float, Bob's optical circuit transmittance.
+                - "detector_efficiency": float, single-photon detector efficiency.
+                - "detector_error": float, intrinsic detector error rate.
+                - "dark_count_rate": float, dark count probability per pulse.
+                - "dark_count_error": float, dark count bit error probability.
+        rng : np.random.Generator
+            Random number generator for reproducible detection events.
+        l : float
+            Channel length in kilometers.
         """
 
         self.N = simulation_parameters["N"]
@@ -28,24 +44,16 @@ class Detector:
 
     def channel_efficiency(self) -> float:
         """
-        Computes the channel efficiency eta as:
+        Compute overall channel efficiency including fiber loss and receiver optics.
 
-            eta = t_ab*eta_bob
-
-        Where the transmittance between a and b is given by:
-
-            t_ab = 10^(-beta*l/10)
-
-        Where beta is the loss coefficient of the channel and l is its lenght.
-        T receptor efficiency is calculated as:
-
-            eta_bob = t_bob*eta_d
-
-        With t_bob being the receptors optical circuit transmittance and eta_d the detector
-        efficiency.
-
-        Returns:
-            float: Channel Efficiency eta
+        Total efficiency is given by :math:`\\eta = t_{ab} \\cdot \\eta_{bob}` where:
+        - Channel transmittance: :math:`t_{ab} = 10^{-\\beta l / 10}`
+        - Receiver efficiency: :math:`\\eta_{bob} = t_{bob} \\cdot \\eta_d`
+    
+        Returns
+        -------
+        float
+            Overall channel efficiency :math:`\\eta \\in [0, 1]`.
         """
 
         t_ab = 10 ** (-1.0 * self.beta * self.l / 10.0)  # Channel transmittance
@@ -60,21 +68,26 @@ class Detector:
         self, eta: float, photon_nums: np.ndarray
     ) -> np.ndarray:
         """
-        Computes the probabilities of the 4 possible events for a two detector model:
+        Compute multinomial detection probabilities for two-detector model.
 
-        p_none: Probability of no detection on either detector.
-        p_corr: Probability of the signal being detected completely by the corresponding
-        detector.
-        p_errn: Probability of the signal being detected completely by the erroneous detector.
-        p_both: Probability of the signal being detected by both detectors simultaneously.
+        For each pulse, computes probabilities of four mutually exclusive events:
+        - Column 0: No detection on either detector
+        - Column 1: Correct detector click only
+        - Column 2: Wrong detector click only  
+        - Column 3: Both detectors click
 
-        Args:
-            eta (float): Channel efficiency
-            photon_nums (np.ndarray): Array containing the photon numbers of each pulse
+        Parameters
+        ----------
+        eta : float
+            Channel efficiency for this pulse batch.
+        photon_nums : npt.NDArray[np.int_]
+            Array of shape (N,) containing photon numbers per pulse.
 
-        Returns:
-            np.ndarray: A (N, 4) matrix containing the probabilities of each event in its columns
-            for each one of the pulses sent.
+        Returns
+        -------
+        npt.NDArray[np.float64]
+            Array of shape (N, 4) where each row sums to 1.0, containing
+            event probabilities clipped to [0, 1] range.
         """
         eta_n = 1 - (1 - eta) ** photon_nums
 
@@ -91,33 +104,39 @@ class Detector:
             self.e_d * eta_n + self.e_0 * self.y_0
         )
 
-        # probabilities are [N,1] arrays so they are joined on a [N,4] matrix:
+        # Stack into (N, 4) matrix
 
         detection_probs = np.column_stack([p_none, p_corr, p_errn, p_both])
-        detection_probs = np.clip(detection_probs, 0.0, 1.0) #normalizes the range 
+
+         # Normalize each row to sum exactly to 1.0
+        row_sums = detection_probs.sum(axis=1, keepdims=True)
+        detection_probs /= np.maximum(row_sums, 1e-15)  # Avoid div-by-zero
 
         if self.debug:
-            print(f"[DEBUG] Probability matrix: {detection_probs}")
+            print(f"[DEBUG] Row sums before norm: {row_sums[:5]}")
+            print(f"[DEBUG] Row sums after norm: {(detection_probs.sum(axis=1)[:5])}")
+            print(f"[DEBUG] Probability matrix:\n{detection_probs[:3]}")
 
         return detection_probs
 
     def detect_pulse(self, eta: float, photon_nums: np.ndarray) -> np.ndarray:
         """
-        Chooses a detection event based on the probability matrix for each pulse and returns
-        an array with the corresponding decision:
+        Sample detection events from multinomial distribution.
 
-            0: No detection (Signal lost)
-            1: Correct detection
-            2: Erroneous detection
-            3: Detection on both
+        Uses inverse transform sampling on cumulative probability matrix to
+        select one event per pulse: 0=no-click, 1=correct, 2=wrong, 3=both.
 
-        Args:
-            eta (float): Channel efficiency
-            photon_nums (np.ndarray): Array containing the photon numbers of each pulse
+        Parameters
+        ----------
+        eta : float
+            Channel efficiency.
+        photon_nums : npt.NDArray[np.int_]
+            Photon numbers per pulse, shape (N,).
 
-        Returns:
-            np.ndarray: Array containing 0, 1, 2 or 3 depending on the decision of the detection
-            event
+        Returns
+        -------
+        npt.NDArray[np.int_]
+            Detection decisions, shape (N,) with values in {0,1,2,3}.
         """
 
         detection_probs = self.compute_detection_probabilities(eta, photon_nums)
@@ -142,20 +161,27 @@ class Detector:
         self, eta: float, photon_nums: np.ndarray, source_bits
     ) -> np.ndarray:
         """
-        Runs the detection event decision and computes bobs bits as follows:
+        Map detection events to Bob's bit values.
 
-            detected == 0 => Assigns bit to -1 indicating no detection
-            detected == 1 => Assigns source_bit = receptor_bit
-            detected == 2 => Assigns receptor_bit = (source_bit + 1) % 2 (Bit flip)
-            detected == 3 => Tosses a coin and randomly assigns 0 or 1.
+        Detection → bit mapping:
+        * 0 (no-click): -1 (erasure)
+        * 1 (correct): copy source bit
+        * 2 (wrong): flip source bit
+        * 3 (both): random bit (0 or 1)
 
-        Args:
-            eta (np.ndarray): Channel efficiency
-            photon_nums (np.ndarray): Array containing the number of photons in the pulse
-            source_bits (_type_): Array containing Alice's bits
+        Parameters
+        ----------
+        eta : float
+            Channel efficiency.
+        photon_nums : npt.NDArray[np.int_]
+            Photon numbers per pulse, shape (N,).
+        source_bits : npt.NDArray[np.int_]
+            Alice's transmitted bits, shape (N,) with values in {0,1}.
 
-        Returns:
-            receptor_bits (np.ndarray): Receptor's bit string
+        Returns
+        -------
+        npt.NDArray[np.int_]
+            Bob's received bits, shape (N,) with values in {-1,0,1}.
         """
         detection_event = self.detect_pulse(eta, photon_nums)
 
@@ -180,10 +206,15 @@ class Detector:
 
     def generate_basis_seq(self) -> np.ndarray:
         """
-        Generates the random basis sequence for the receptor.
+        Generate random measurement basis choices for Bob.
 
-        Returns:
-            basis_seq: Random array representing the base in which each bit will be encoded (0 = Rectilinear, 1 = Hadamard)
+        Each basis chosen independently with equal probability:
+        0 = rectilinear (Z-basis), 1 = diagonal (X-basis).
+
+        Returns
+        -------
+        npt.NDArray[np.int_]
+            Basis choices, shape (N,) with values in {0,1}.
         """
         basis_seq = self.rng.integers(0, 2, size=self.N)
 

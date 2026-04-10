@@ -4,13 +4,23 @@ import numpy as np
 class PostProcess:
     def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
         """
-        Initializes a post processing object that emulates error verification and statistical
-        assesment of the quantum channel through the classical channel.
+            Initialize post-processing for decoy-state BB84 parameter estimation.
 
-        Args:
-            simulation_parameters (dict): Dictionary containing the simulation parameters
-            rng (np.random.Generator): Random number generator
+            Performs basis sifting, computes per-state gains/QBER, and extracts security
+            bounds (Y₀ᴸ, Y₁ᴸ, e₁ᵘ) using two-decoy analysis. Computes asymptotic secure
+            key rate via GLLP formula.
 
+            Parameters
+            ----------
+            simulation_parameters : dict
+                Required keys:
+                - "N": int, number of pulses.
+                - "debug": bool, verbose output.
+                - "mu": float, signal state mean photon number.
+                - "decoy_intensities": list[float], exactly 2 decoy intensities.
+                - "error_correction_efficiency": float, f(EC) ∈ [1.0, 1.16].
+            rng : np.random.Generator
+                Random number generator for privacy amplification simulation.
         """
         self.N = simulation_parameters["N"]
         self.rng = rng
@@ -28,18 +38,23 @@ class PostProcess:
         self, receptor_bits: np.ndarray, state_choice: np.ndarray, state: int = 0
     ) -> float:
         """
-        Computes the gain Q for a specific state (Vacuum, weak or decoy). The gain is defined as the probability of
-        a detection event triggering at the receptor when alice sent with mean photon number mu. In this case, it is
-        computed as the relative frequency of the successful detection events (bob_bits != -1) for each
-        state choice (state_choice = 0, 1, 2, ...)
+            Compute empirical gain Qᵢ for state i.
 
-        Args:
-            receptor_bits (np.ndarray): Array with the detection event decision
-            state_choice (np.ndarray): Alice's choice of states.
-            state (int, optional): State for which the gain is to be computed. Defaults to 0.
+            Gain is the sifted detection probability: :math:`Q_i = \\frac{N_{\\text{det},i}}{N_i}`
 
-        Returns:
-            float: Gain Q of a specific state.
+            Parameters
+            ----------
+            receptor_bits : npt.NDArray[np.int_]
+                Bob's bits, shape (N,) ∈ {-1, 0, 1}.
+            state_choice : npt.NDArray[np.int_]
+                Alice's state labels, shape (N,) ∈ {0, 1, 2, ...}.
+            state : int, default=0
+                State index (0=signal, 1/2=decoys).
+
+            Returns
+            -------
+            float
+                Gain Qᵢ ∈ [0, 1].
         """
 
         state_mask = state_choice == state
@@ -57,17 +72,21 @@ class PostProcess:
 
     def compute_gains(
         self, receptor_bits: np.ndarray, state_choice: np.ndarray
-    ) -> list:
+    ) -> np.ndarray:
         """
-        Computes the gains of all states in an output list.
+            Compute gains Q = [Q₀, Q₁, Q₂, ...] for all states.
 
-        Args:
-            receptor_bits (np.ndarray): Array with the detection event decision
-            state_choice (np.ndarray): Alice's choice of states.
+            Parameters
+            ----------
+            receptor_bits : npt.NDArray[np.int_]
+                Bob's detection outcomes, shape (N,).
+            state_choice : npt.NDArray[np.int_]
+                Alice's state sequence, shape (N,).
 
-        Returns:
-            list: A list with the gains for each state. The index of the state coincides
-            with the index of the gain in the list.
+            Returns
+            -------
+            npt.NDArray[np.float64]
+                Array of shape (state_num,) containing gains Qᵢ for each state.
         """
         gains = np.array([], dtype=float)
 
@@ -86,14 +105,19 @@ class PostProcess:
         self, source_basis: np.ndarray, receptor_basis: np.ndarray
     ) -> np.ndarray:
         """
-        Obtains the indexes for which basis for source and receptor coincide
+            Sift pulses with matching bases (Z↔Z, X↔X).
 
-        Args:
-            source_basis (np.ndarray): Alice's basis choice array
-            receptor_basis (np.ndarray): Bob's basis choice array
+            Parameters
+            ----------
+            source_basis : npt.NDArray[np.int_]
+                Alice's bases, shape (N,) ∈ {0, 1}.
+            receptor_basis : npt.NDArray[np.int_]
+                Bob's bases, shape (N,) ∈ {0, 1}.
 
-        Returns:
-            np.ndarray: Boolean array with true values on the indexes where basis match.
+            Returns
+            -------
+            npt.NDArray[np.bool_]
+                Sifting mask, shape (N,) where True indicates basis match.
         """
 
         matching_basis_mask = source_basis == receptor_basis
@@ -113,18 +137,25 @@ class PostProcess:
         state: int = 0,
     ) -> float:
         """
-        Computes the Quantum Bit Error Rate (QBER) associated to a specified state (Signal or decoy)
-        as the relative frecuency of non coincident bits from detected pulses associated to such state and after
-        sifting basis.
+            Compute QBER Eᵢ for state i among sifted, detected pulses.
 
-        Args:
-            sifted_source_bits (np.ndarray): Source's bits after sifting basis
-            sifted_receptor_bits (np.ndarray): Receptor's bits after sifting basis
-            sifted_state_choice (np.ndarray): Choices of states after sifting basis
-            state (int, optional): State of interest. Defaults to 0.
+            QBER: :math:`E_i = \\frac{\\text{# errors in state } i}{\\text{# detections in state } i}`
 
-        Returns:
-            state_qber (float): Quantum bit error rate
+            Parameters
+            ----------
+            sifted_source_bits : npt.NDArray[np.int_]
+                Alice's sifted bits, shape (M,).
+            sifted_receptor_bits : npt.NDArray[np.int_]
+                Bob's sifted bits, shape (M,) ∈ {-1, 0, 1}.
+            sifted_state_choice : npt.NDArray[np.int_]
+                Sifted state labels, shape (M,).
+            state : int, default=0
+                State index to analyze.
+
+            Returns
+            -------
+            float
+                QBER Eᵢ ∈ [0, 0.5].
         """
         detected_mask = sifted_receptor_bits != -1  # True if the bit was detected
         sifted_detected_state_mask = (sifted_state_choice == state) & (
@@ -158,18 +189,23 @@ class PostProcess:
         sifted_source_bits: np.ndarray,
         sifted_receptor_bits: np.ndarray,
         sifted_state_choice: np.ndarray,
-    ) -> list:
+    ) -> np.ndarray:
         """
-        Computes the qbers of all states in an output list.
+            Compute QBERs E = [E₀, E₁, E₂, ...] for all states.
 
-        Args:
-            sifted_source_bits (np.ndarray): Source's bits after sifting basis
-            sifted_receptor_bits (np.ndarray): Receptor's bits after sifting basis
-            sifted_state_choice (np.ndarray): Choices of states after sifting basis
+            Parameters
+            ----------
+            sifted_source_bits : npt.NDArray[np.int_]
+                Sifted Alice bits.
+            sifted_receptor_bits : npt.NDArray[np.int_]
+                Sifted Bob bits.
+            sifted_state_choice : npt.NDArray[np.int_]
+                Sifted state labels.
 
-        Returns:
-            list: A list with the gains for each state. The index of the state coincides
-            with the index of the gain in the list.
+            Returns
+            -------
+            npt.NDArray[np.float64]
+                Array of shape (state_num,) containing QBERs Eᵢ.
         """
         qbers = np.array([], dtype=float)
 
@@ -187,7 +223,22 @@ class PostProcess:
 
         return qbers
 
-    def background_yield_bound(self, gains: list) -> float:
+    def background_yield_bound(self, gains: np.ndarray) -> float:
+        """
+            Estimate lower bound on vacuum yield Y₀ᴸ using two decoys.
+
+            :math:`Y_0^L = \\frac{\\nu_1 Q_{d2} e^{\\nu_2} - \\nu_2 Q_{d1} e^{\\nu_1}}{\\nu_1 - \\nu_2}`
+
+            Parameters
+            ----------
+            gains : npt.NDArray[np.float64]
+                Observed gains Q = [Qₛ, Q_{d1}, Q_{d2}, ...].
+
+            Returns
+            -------
+            float
+                Lower bound Y₀ᴸ ∈ [0, 1] (clipped).
+        """
 
         if len(self.decoy_intensities) != 2:
             return 0.0
@@ -211,7 +262,25 @@ class PostProcess:
             np.clip(y_0_l, 0.0, 1.0)
         )  # Bounds the yield to values between 0 and 1
 
-    def single_photon_yield_bound(self, gains: list, y_0_l: float) -> float:
+    def single_photon_yield_bound(self, gains: np.ndarray, y_0_l: float) -> float:
+        """
+            Estimate lower bound on single-photon yield Y₁ᴸ.
+
+            :math:`Y_1^L = \\frac{\\mu}{(\\nu_1-\\nu_2)(\\mu-(\\nu_1+\\nu_2))}\\left[Q_{d1}e^{\\nu_1}-Q_{d2}e^{\\nu_2}-\\frac{\\nu_1^2-\\nu_2^2}{\\mu^2}(Q_se^\\mu-Y_0^L)\\right]`
+
+            Parameters
+            ----------
+            gains : npt.NDArray[np.float64]
+                Observed gains.
+            y_0_l : float
+                Vacuum yield lower bound.
+
+            Returns
+            -------
+            float
+                Single-photon yield lower bound Y₁ᴸ ∈ [0, 1].
+        """
+
         if len(self.decoy_intensities) != 2:
             return 0.0
 
@@ -236,8 +305,28 @@ class PostProcess:
         return float(np.clip(y_1_l, 0.0, 1.0))
 
     def single_photon_error_bound(
-        self, gains: list, qbers: list, y_1_l: float
+        self, gains: np.ndarray, qbers: np.ndarray, y_1_l: float
     ) -> float:
+        
+        """
+            Estimate upper bound on single-photon error rate e₁ᵘ.
+
+            :math:`e_1^u = \\frac{E_{d1}Q_{d1}e^{\\nu_1}-E_{d2}Q_{d2}e^{\\nu_2}}{(\\nu_1-\\nu_2)Y_1^L}`
+
+            Parameters
+            ----------
+            gains : npt.NDArray[np.float64]
+                Observed gains.
+            qbers : npt.NDArray[np.float64]
+                Observed QBERs.
+            y_1_l : float
+                Single-photon yield lower bound.
+
+            Returns
+            -------
+            float
+                Single-photon phase error upper bound e₁ᵘ ∈ [0, 0.5].
+        """
         if len(self.decoy_intensities) != 2 or y_1_l <= 0.0:
             if self.debug:
                 print(f"[DEBUG] Final e1_u: {0.5}")
@@ -265,14 +354,51 @@ class PostProcess:
         return float(np.clip(e_1_u, 0.0, 0.5))
 
     def shannon_entropy(self, x: float):
+
+        """
+            Binary Shannon entropy function H(x) = -xlog₂(x)-(1-x)log₂(1-x).
+
+            Parameters
+            ----------
+            x : float
+                Probability ∈ [0, 1].
+
+            Returns
+            -------
+            float
+                H(x), with H(0) = H(1) = 0 by continuity.
+        """
         if x > 0 and x < 1:
             return -x * np.log2(x) - (1 - x) * np.log2(1 - x)
         else:
             return 0
 
     def secure_key_rate(
-        self, gains: list, qbers: list, y_1_l: float, e_1_u: float
+        self, gains: np.ndarray, qbers: np.ndarray, y_1_l: float, e_1_u: float
     ) -> float:
+        """
+            Compute asymptotic secure key rate (GLLP formula).
+
+            :math:`R = \\frac{1}{2} \\left[ Q_1 \\left(1 - h(e_1^u)\\right) - Q_\\mu f(E_\\mu) h(E_\\mu) \\right]`
+
+            where :math:`Q_1 = Y_1^L \\mu e^{-\\mu}`.
+
+            Parameters
+            ----------
+            gains : npt.NDArray[np.float64]
+                Observed gains [Qₛ, Q_{d1}, Q_{d2}, ...].
+            qbers : npt.NDArray[np.float64]
+                Observed QBERs [Eₛ, E_{d1}, E_{d2}, ...].
+            y_1_l : float
+                Single-photon yield lower bound.
+            e_1_u : float
+                Single-photon phase error upper bound.
+
+            Returns
+            -------
+            float
+                Secure key rate R ≥ 0 (bits per pulse).
+        """
         mu = self.signal_intensity
         Q_s = gains[0]
         E_s = qbers[0]
