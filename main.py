@@ -8,7 +8,7 @@ import os
 
 simulation_parameters = {
     "Iterations": 1,
-    "N": 1_000_000,  # Number of generated pulses
+    "N": 10_000,  # Number of generated pulses
     "mu": 0.5,  # Signal intensity
     "decoy_intensities": [0.1, 0.0],  # Decoy intensities
     "decoy_rate": 0.3,  # Decoy probability
@@ -23,7 +23,7 @@ simulation_parameters = {
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "error_correction_efficiency": 1.0,
-    "debug": False,
+    "debug": True,
 }
 rng = np.random.default_rng()
 iter = simulation_parameters["Iterations"]
@@ -32,7 +32,7 @@ simulator = Simulator(simulation_parameters=simulation_parameters, rng=rng)
 
 d_min = 10.0
 d_max = 140
-d_sample = 60
+d_sample = 1
 alpha = 0.4  # Controls the concentration of points
 
 iter_max = 120
