@@ -2,10 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Leer archivo CSV como array 2D
-data = np.genfromtxt('data/data_20260410_124020_100_1000000.csv', delimiter=',', skip_header=1)
+data = np.genfromtxt('data/data_20260411_182652_100_10000000.csv', delimiter=',', skip_header=1)
 
 distances = data[:, 0]        # primera columna
-key_rates = data[:, 1]   # segunda columna
+key_rates = data[:, 1]
+key_rates_teo = data[:, 2]        # segunda columna
 
 plt.rcParams.update({
     "font.family": "sans-serif",
@@ -27,7 +28,8 @@ plt.rcParams.update({
 
 fig, ax = plt.subplots(figsize=(8, 6))
 
-color_mc = "#b11932"  
+color_mc = "#b11932"
+color_teo = "#0a63d6"  
 ax.semilogy(
     distances, key_rates,
     marker='o',
@@ -36,6 +38,17 @@ ax.semilogy(
     linewidth=1.5,
     markersize=5,
     label="MonteCarlo simulation",
+    markeredgecolor="white",
+    markeredgewidth=1.0,   
+)
+
+ax.semilogy(
+    distances, key_rates_teo,
+    linestyle='-',     
+    color=color_teo,
+    linewidth=1.5,
+    markersize=5,
+    label="Theoretical values",
     markeredgecolor="white",
     markeredgewidth=1.0,
     

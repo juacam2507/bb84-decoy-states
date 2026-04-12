@@ -1,0 +1,20 @@
+[project]
+name = "decoy-states-bb84"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.4",
+    "pytest>=9.0.3",
+    "scipy>=1.17.1",
+    "sphinx>=9.1.0",
+    "tqdm>=4.67.3",
+]
+
+[dependency-groups]
+dev = [
+    "sphinx>=9.1.0",
+    "sphinx-rtd-theme>=3.1.0",
+]

@@ -1,20 +1,82 @@
-#ignore pycache folder
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
-.DS_Store
-Thumbs.db
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
 
-#Ignore results
-data/
-*.csv
-*.npy
-*.pkl
-*.h5
+# Virtual environments
+ENV/
+env/
+
+# Sphinx
+docs/build/
+docs/_build/
+_build/
+
+# Logs
+debug.log
 *.log
 
-*.png
+# Runtime data
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Generated data / plots (untrack unless final deliverables)
 *.pdf
-#Ignore environments
-venv/
-env/
-venv_*/
+*.png
+data/
+figs/
+_plots/
+
+# uv cache (keep uv.lock!)
+.uv/
+
+# Temporary files
+tmp/
+temp/
