@@ -46,7 +46,7 @@ class Simulator:
         self.state_num = len(simulation_parameters["decoy_intensities"]) + 1
         self.debug = simulation_parameters["debug"]
 
-    def run(self, l: float, iter: int) -> tuple:
+    def run(self, l: float, iterations: int) -> tuple:
         """
         Execute the quantum key distribution (QKD) simulation for a given channel length.
 
@@ -91,19 +91,7 @@ class Simulator:
         # Compute the channel efficiency
         eta = bob.channel_efficiency()
         
-        Q_teo = post_process.compute_theoretical_gains(eta=eta)
-        E_teo = post_process.compute_theoretical_qbers(eta=eta, Q_teo=Q_teo)
-        
-        y_0_l_t = post_process.background_yield_bound(gains=Q_teo)
-        y_1_l_t = post_process.single_photon_yield_bound(gains=Q_teo, y_0_l=y_0_l_t)
-        e_1_u_t = post_process.single_photon_error_bound(
-            gains=Q_teo, qbers=E_teo, y_1_l=y_1_l_t
-        )
-        R_teo = post_process.secure_key_rate(
-            gains=Q_teo, qbers=E_teo, y_1_l=y_1_l_t, e_1_u=e_1_u_t
-        )
-
-        for iter in tqdm(range(iter), desc="Iterations"):
+        for iter in tqdm(range(iterations), desc="Iterations"):
 
             # Generate the photon pulse for Alice
             alice_bits, alice_basis, state_choice, photon_nums = alice.generate_pulses()
@@ -132,21 +120,11 @@ class Simulator:
             Q_cum += gains
             E_cum += qbers
 
-        Q_av = Q_cum / iter
-        E_av = E_cum / iter
+        Q_av = Q_cum / iterations
+        E_av = E_cum / iterations
 
         if self.debug:
-            print(f"[DEBUG] Average gains after {iter} iterations: {Q_av}")
-            print(f"[DEBUG] Average QBER after {iter} iterations: {E_av}")
+            print(f"[DEBUG] Average gains after {iterations} iterations: {Q_av}")
+            print(f"[DEBUG] Average QBER after {iterations} iterations: {E_av}")
 
-        # Compute the thresholds to calculate the secure Key rate.
-        y_0_l_exp = post_process.background_yield_bound(gains=Q_av)
-        y_1_l_exp = post_process.single_photon_yield_bound(gains=Q_av, y_0_l=y_0_l_exp)
-        e_1_u_exp = post_process.single_photon_error_bound(
-            gains=Q_av, qbers=E_av, y_1_l=y_1_l_exp
-        )
-        R = post_process.secure_key_rate(
-            gains=Q_av, qbers=E_av, y_1_l=y_1_l_exp, e_1_u=e_1_u_exp
-        )
-
-        return R, R_teo
+        return Q_av, E_av, eta
