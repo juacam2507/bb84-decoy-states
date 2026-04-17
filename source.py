@@ -25,7 +25,7 @@ class Source:
         self.N = simulation_parameters["N"]
         self.mu = simulation_parameters["mu"]
         self.decoy_intensities = simulation_parameters["decoy_intensities"]
-        self.decoy_rate = simulation_parameters["decoy_rate"]
+        self.state_probs = simulation_parameters["state_probs"]
         self.debug = simulation_parameters["debug"]
         self.rng = rng
 
@@ -84,12 +84,13 @@ class Source:
             Array of shape (N,) where each entry indicates the chosen pulse state
             (0 = signal, 1... = decoy states).
         """
+        if not np.isclose(np.sum(self.state_probs), 1.0, atol=1e-10):
+            raise ValueError(f"state probabilities should sum to ~ 1. Actual: {sum(np.array(self.state_probs)):.15g}")
+
         decoy_num = int(len(self.decoy_intensities))
 
         state_index = [0] + list(np.arange(1, decoy_num + 1))
-        state_probs = [1 - self.decoy_rate] + [
-            self.decoy_rate / decoy_num
-        ] * decoy_num  # Concatenation of arrays
+        state_probs = self.state_probs
         state_probs = np.array(state_probs, dtype=np.float64) / np.sum(
             state_probs
         )  # Normalization of probabilities

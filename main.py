@@ -7,11 +7,11 @@ import json
 import os
 
 simulation_parameters = {
-    "Iterations": 100,
-    "N": 10_000_000,  # Number of generated pulses
-    "mu": 0.5,  # Signal intensity
-    "decoy_intensities": [0.1, 0.0],  # Decoy intensities
-    "decoy_rate": 0.3,  # Decoy probability
+    "Iterations": 10,
+    "N": 100_000_000,  # Number of generated pulses
+    "mu": 0.55,  # Signal intensity
+    "decoy_intensities": [0.10, 0.0],  # Decoy intensities
+    "state_probs": [0.80, 0.16 ,0.04],  # State probability
     "channel_properties": {
         "beta": 0.2,  # Loss coefficient (dB/Km)
     },
@@ -22,22 +22,22 @@ simulation_parameters = {
         "dark_count_rate": 4e-9,  # Probability of dark counts
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
-    "error_correction_efficiency": 1.0,
-    "debug": False,
+    "error_correction_efficiency": 1.2,
+    "debug": True,
 }
 rng = np.random.default_rng()
 
 simulator = Simulator(simulation_parameters=simulation_parameters, rng=rng)
 analysis = ChannelAnalysis(simulation_parameters=simulation_parameters)
 
-d_min = 10.0
-d_max = 200
-d_sample = 10
-alpha = 0.4  # Controls the concentration of points
+d_min = 50
+d_max = 50
+d_sample = 1
+alpha = 0.4  # Controls the concentration of distances sampled
 
 iter_max = 1
 iter_min = 1
-gamma = 0.4
+gamma = 0.4 # Controls the concentration of iterations sampled
 
 t = np.linspace(0.0, 1.0, d_sample)
 
