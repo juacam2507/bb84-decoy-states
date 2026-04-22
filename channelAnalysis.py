@@ -286,3 +286,21 @@ class ChannelAnalysis:
             print(f"[DEBUG] Final Secure Key Rate: {max(0.0, float(R))}")
 
         return max(0.0, float(R))
+
+    def compute_state_eta(self, gains: np.ndarray) -> np.ndarray:
+
+        eta_state = np.where(
+            self.intensities > 1e-15,
+            -np.log(1 - (gains - self.y_0)) / self.intensities,
+            0.0,
+        )
+
+        return eta_state
+
+    def compute_state_yield_n(
+        self, photon_number: int, eta_state: np.ndarray
+    ) -> np.ndarray:
+
+        state_yields = 1 - (1 - eta_state) ** photon_number
+
+        return state_yields
