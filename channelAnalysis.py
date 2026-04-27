@@ -288,19 +288,113 @@ class ChannelAnalysis:
         return max(0.0, float(R))
 
     def compute_state_eta(self, gains: np.ndarray) -> np.ndarray:
+        """
+            Compute the effective transmission parameter (:math:`\\eta`) for each state.
+
+            This function estimates the transmission efficiency for each state by
+            inverting the gain model, taking into account background counts and
+            state intensities.
+
+            The computation is defined as:
+
+            .. math::
+
+                \\eta = 
+                \\begin{cases}
+                -\\frac{\\ln\\left(1 - (G - Y_0)\\right)}{\\mu}, & \\text{if } \\mu > 10^{-15} \\\\
+                0, & \\text{otherwise}
+                \\end{cases}
+
+            where:
+
+            - :math:`G` is the observed gain,
+            - :math:`Y_0` is the background (dark count) contribution,
+            - :math:`\\mu` is the state intensity,
+            - :math:`\\eta` is the effective transmission efficiency.
+
+            Parameters
+            ----------
+            gains : np.ndarray
+                Array of observed gains (:math:`G`) for each state. Must have the same
+                shape as `self.intensities`.
+
+            Returns
+            -------
+            np.ndarray
+                Array of transmission efficiencies (:math:`\\eta`) for each state.
+
+            Notes
+            -----
+            - Values of intensity :math:`\\mu \\leq 10^{-15}` are treated as zero to
+            avoid numerical instability due to division by very small numbers.
+            - The argument of the logarithm must remain positive:
+            :math:`1 - (G - Y_0) > 0`.
+        """
 
         eta_state = np.where(
             self.intensities > 1e-15,
             -np.log(1 - (gains - self.y_0)) / self.intensities,
             0.0,
         )
+        if self.debug:
+            print(f"[DEBUG] Computed Transmission Efficiencies: {eta_state}")
 
         return eta_state
 
     def compute_state_yield_n(
         self, photon_number: int, eta_state: np.ndarray
     ) -> np.ndarray:
+        
+        """
+            Compute the yield for an n-photon state.
 
-        state_yields = 1 - (1 - eta_state) ** photon_number
+            This function calculates the probability that at least one photon is
+            detected given a state with :math:`n` photons and transmission efficiency
+            :math:`\\eta`.
+
+            The yield is defined as:
+
+            .. math::
+
+                Y_n = 1 - (1 - \\eta)^n
+
+            where:
+
+            - :math:`n` is the photon number,
+            - :math:`\\eta` is the transmission efficiency,
+            - :math:`Y_n` is the probability that at least one photon is detected.
+
+            This follows from the assumption that each photon is independently
+            transmitted with probability :math:`\\eta`. The probability that none are
+            detected is :math:`(1 - \\eta)^n`, so the yield is its complement.
+
+            Parameters
+            ----------
+            photon_number : int
+                Number of photons (:math:`n`). Must be a non-negative integer.
+
+            eta_state : np.ndarray
+                Array of transmission efficiencies (:math:`\\eta`) for each state.
+
+            Returns
+            -------
+            np.ndarray
+                Array of yields (:math:`Y_n`) for each state.
+
+            Notes
+            -----
+            - Assumes independent transmission events for each photon.
+            - Typically, :math:`0 \\leq \\eta \\leq 1`.
+        """
+
+        state_yields = 1 - (1 - eta_state) ** photon_number + self.y_0
 
         return state_yields
+
+    def compute_effective_yields(self, photon_nums: list, gains: np.ndarray) -> np.ndarray:
+        
+        eta_state = self.compute_state_eta(gains=gains)
+        for num in photon_nums: 
+            state_yield_n = self.compute_state_yield_n(photon_number=num, eta_state=eta_state)
+
+        return state_yield_n
