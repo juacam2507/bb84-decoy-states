@@ -287,114 +287,138 @@ class ChannelAnalysis:
 
         return max(0.0, float(R))
 
-    def compute_state_eta(self, gains: np.ndarray) -> np.ndarray:
+    def compute_state_eta(self, gains: np.ndarray) -> tuple:
         """
-            Compute the effective transmission parameter (:math:`\\eta`) for each state.
+            Compute the effective transmission efficiencies for the signal and decoy states.
 
-            This function estimates the transmission efficiency for each state by
-            inverting the gain model, taking into account background counts and
-            state intensities.
+            This function estimates the transmission efficiency for the signal and decoy
+            states by inverting the gain model and accounting for the background
+            contribution ``self.y_0``.
 
-            The computation is defined as:
+            The efficiencies are computed as:
 
             .. math::
 
-                \\eta = 
-                \\begin{cases}
-                -\\frac{\\ln\\left(1 - (G - Y_0)\\right)}{\\mu}, & \\text{if } \\mu > 10^{-15} \\\\
-                0, & \\text{otherwise}
-                \\end{cases}
+                \\eta_\\mu = -\\frac{\\ln\\left(1 - (Q_\\mu - Y_0)\\right)}{\\mu}
+
+            .. math::
+
+                \\eta_\\nu = -\\frac{\\ln\\left(1 - (Q_\\nu - Y_0)\\right)}{\\nu}
 
             where:
 
-            - :math:`G` is the observed gain,
+            - :math:`Q_\\mu` is the observed gain for the signal state,
+            - :math:`Q_\\nu` is the observed gain for the decoy state,
             - :math:`Y_0` is the background (dark count) contribution,
-            - :math:`\\mu` is the state intensity,
-            - :math:`\\eta` is the effective transmission efficiency.
+            - :math:`\\mu` is the signal-state intensity,
+            - :math:`\\nu` is the decoy-state intensity,
+            - :math:`\\eta_\\mu` and :math:`\\eta_\\nu` are the corresponding
+            transmission efficiencies.
 
             Parameters
             ----------
             gains : np.ndarray
-                Array of observed gains (:math:`G`) for each state. Must have the same
-                shape as `self.intensities`.
+                Array containing the observed gains for the states. The function expects
+                the first two entries to correspond to ``Q_mu`` and ``Q_nu``.
 
             Returns
             -------
-            np.ndarray
-                Array of transmission efficiencies (:math:`\\eta`) for each state.
+            tuple
+                A tuple containing:
+
+                - eta_mu : float
+                    Effective transmission efficiency for the signal state.
+                - eta_nu : float
+                    Effective transmission efficiency for the decoy state.
 
             Notes
             -----
-            - Values of intensity :math:`\\mu \\leq 10^{-15}` are treated as zero to
-            avoid numerical instability due to division by very small numbers.
-            - The argument of the logarithm must remain positive:
-            :math:`1 - (G - Y_0) > 0`.
-        """
+            - The function currently unpacks ``gains`` as ``Q_mu, Q_nu, _``.
+            - The function also unpacks ``self.intensities`` as ``mu, nu, _``.
+            - If ``self.debug`` is ``True``, the computed efficiencies are printed.
+            - The logarithm arguments must satisfy :math:`1 - (Q - Y_0) > 0`.
+        """ 
+        Q_mu, Q_nu, _ = gains
+        mu, nu, _ = self.intensities
 
-        eta_state = np.where(
-            self.intensities > 1e-15,
-            -np.log(1 - (gains - self.y_0)) / self.intensities,
-            0.0,
-        )
+        eta_mu = -np.log(1 - (Q_mu - self.y_0)) / mu
+        eta_nu = -np.log(1 - (Q_nu - self.y_0)) / nu
+
         if self.debug:
-            print(f"[DEBUG] Computed Transmission Efficiencies: {eta_state}")
+            print(f"[DEBUG] Efficiency of signal state: {eta_mu}")
+            print(f"[DEBUG] Efficiency of decoy state:{eta_nu}")
 
-        return eta_state
+        return eta_mu, eta_nu
 
-    def compute_state_yield_n(
-        self, photon_number: int, eta_state: np.ndarray
-    ) -> np.ndarray:
-        
+    def compute_state_yields(self, photon_nums: list, gains: np.ndarray) -> tuple:
         """
-            Compute the yield for an n-photon state.
+        Compute the single‑photon yields for the signal and decoy states at given photon numbers.
 
-            This function calculates the probability that at least one photon is
-            detected given a state with :math:`n` photons and transmission efficiency
-            :math:`\\eta`.
+        This function computes the expected yield for each state (signal and decoy)
+        as a function of photon number, using the effective transmission efficiencies
+        obtained from the gains.
 
-            The yield is defined as:
+        The single‑photon yield for each state is given by:
 
-            .. math::
+        .. math::
 
-                Y_n = 1 - (1 - \\eta)^n
+            Y_n^{\\mu} = Y_0 + 1 - (1 - \\eta_\\mu)^n
 
-            where:
+        .. math::
 
-            - :math:`n` is the photon number,
-            - :math:`\\eta` is the transmission efficiency,
-            - :math:`Y_n` is the probability that at least one photon is detected.
+            Y_n^{\\nu} = Y_0 + 1 - (1 - \\eta_\\nu)^n
 
-            This follows from the assumption that each photon is independently
-            transmitted with probability :math:`\\eta`. The probability that none are
-            detected is :math:`(1 - \\eta)^n`, so the yield is its complement.
+        where:
 
-            Parameters
-            ----------
-            photon_number : int
-                Number of photons (:math:`n`). Must be a non-negative integer.
+        - :math:`n` is the photon number,
+        - :math:`Y_0` is the background (dark count) contribution,
+        - :math:`\\eta_\\mu` is the transmission efficiency of the signal state,
+        - :math:`\\eta_\\nu` is the transmission efficiency of the decoy state,
+        - :math:`Y_n^{\\mu}` is the yield of the signal state for :math:`n` photons,
+        - :math:`Y_n^{\\nu}` is the yield of the decoy state for :math:`n` photons.
 
-            eta_state : np.ndarray
-                Array of transmission efficiencies (:math:`\\eta`) for each state.
+        Parameters
+        ----------
+        photon_nums : list of int
+            List of photon numbers :math:`n` for which yields are to be computed.
+            Each element must be a non‑negative integer.
 
-            Returns
-            -------
-            np.ndarray
-                Array of yields (:math:`Y_n`) for each state.
+        gains : np.ndarray
+            Array of observed gains used to compute transmission efficiencies
+            via :meth:`compute_state_eta`. The first two entries are treated as
+            :math:`Q_\\mu` (signal) and :math:`Q_\\nu` (decoy).
 
-            Notes
-            -----
-            - Assumes independent transmission events for each photon.
-            - Typically, :math:`0 \\leq \\eta \\leq 1`.
+        Returns
+        -------
+        tuple
+            A tuple containing:
+
+            - yields_mu : list of float
+                Yields for the signal state :math:`(Y_n^{\\mu})` at each photon number.
+            - yields_nu : list of float
+                Yields for the decoy state :math:`(Y_n^{\\nu})` at each photon number.
+
+        Notes
+        -----
+        - The function calls :meth:`compute_state_eta` to obtain :math:`\\eta_\\mu`
+        and :math:`\\eta_\\nu` from the input gains.
+        - If :attr:`self.debug` is ``True``, the computed yield lists are printed.
+        - The background term :math:`Y_0` is assumed to be stored in ``self.y_0``.
         """
 
-        state_yields = 1 - (1 - eta_state) ** photon_number + self.y_0
-
-        return state_yields
-
-    def compute_effective_yields(self, photon_nums: list, gains: np.ndarray) -> np.ndarray:
+        yields_mu = []
+        yields_nu = []
+        eta_mu, eta_nu = self.compute_state_eta(gains=gains)
         
-        eta_state = self.compute_state_eta(gains=gains)
         for num in photon_nums: 
-            state_yield_n = self.compute_state_yield_n(photon_number=num, eta_state=eta_state)
+            Y_n_mu = self.y_0 + 1 - (1 - eta_mu)**num
+            Y_n_nu = self.y_0 + 1 - (1 - eta_nu)**num
 
-        return state_yield_n
+            yields_mu.append(Y_n_mu)
+            yields_nu.append(Y_n_nu)
+
+        if self.debug:
+            print(f"[DEBUG] Efficiency of signal state: {yields_mu}")
+            print(f"[DEBUG] Efficiency of decoy state:{yields_nu}")
+
+        return yields_mu, yields_nu

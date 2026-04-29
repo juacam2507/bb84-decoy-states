@@ -8,10 +8,10 @@ import os
 
 simulation_parameters = {
     "Iterations": 10,
-    "N": 100_000_000,  # Number of generated pulses
+    "N": 10_000_000,  # Number of generated pulses
     "mu": 0.55,  # Signal intensity
     "decoy_intensities": [0.10, 0.0],  # Decoy intensities
-    "state_probs": [0.80, 0.16 ,0.04],  # State probability
+    "state_probs": [0.90, 0.08 ,0.02],  # State probability
     "channel_properties": {
         "beta": 0.2,  # Loss coefficient (dB/Km)
     },
@@ -30,8 +30,8 @@ rng = np.random.default_rng()
 simulator = Simulator(simulation_parameters=simulation_parameters, rng=rng)
 analysis = ChannelAnalysis(simulation_parameters=simulation_parameters)
 
-d_min = 50
-d_max = 50
+d_min = 10
+d_max = 10
 d_sample = 1
 alpha = 0.4  # Controls the concentration of distances sampled
 
