@@ -24,7 +24,23 @@ simulation_parameters = {
     },
     "error_correction_efficiency": 1.2,
     "debug": True,
+
 }
+
+distance_analysis_params = {
+    "distance_control" : {    
+        "d_min" : 10,
+        "d_max" : 10,
+        "d_sample" : 1,
+        "alpha" : 0.4,  # Controls the concentration of distances sampled
+    },
+    "iteration_control" : {
+        "iter_max" : 1,
+        "iter_min" : 1,
+        "gamma" : 0.4   # Controls the concentration of iterations sampled
+    }
+}
+
 rng = np.random.default_rng()
 
 simulator = Simulator(simulation_parameters=simulation_parameters, rng=rng)
