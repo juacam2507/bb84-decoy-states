@@ -3,12 +3,13 @@ from tqdm import tqdm
 from datetime import datetime
 from bb88_simulator import Simulator
 from channelAnalysis import ChannelAnalysis
+from quantumChannel import QuantumChannel
 import json
 import os
 
 
 class DistanceAnalysis:
-    def __init__(self, simulation_parameters, distance_analysis_params):
+    def __init__(self, simulation_parameters : dict, distance_analysis_params: dict, ):
         self.sim_params = simulation_parameters
 
         self.n_sample = distance_analysis_params["n_sample"]
@@ -41,14 +42,15 @@ class DistanceAnalysis:
     def run_distance_sweep(
         self, simulator: Simulator, channel_analysis: ChannelAnalysis, analytical: bool
     ):
-
         key_rates = np.array([], dtype=float)
 
         i = 0
 
         for d in tqdm(self.distances, desc="Distances"):
+            quantum_channel = QuantumChannel(source=alice, detector= bob, postProcess=post_process,l=d)
+            eta = quantum_channel.eta
 
-            Q_exp, E_exp, eta = simulator.run(l=d, iterations=self.iterations[i])
+            Q_exp, E_exp = simulator.run(iterations=self.iterations[i])
             R_exp = channel_analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
             i += 1
 

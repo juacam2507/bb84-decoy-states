@@ -1,7 +1,11 @@
 import numpy as np
 from tqdm import tqdm
 from bb88_simulator import Simulator
+from source import Source
+from detector import Detector
+from postProcess import PostProcess
 from channelAnalysis import ChannelAnalysis
+from quantumChannel import QuantumChannel
 from datetime import datetime
 import json
 import os
@@ -43,6 +47,10 @@ distance_analysis_params = {
 
 rng = np.random.default_rng()
 
+alice = Source(simulation_parameters, rng)
+bob = Detector(simulation_parameters, rng)
+post_process = PostProcess(simulation_parameters, rng)
+
 simulator = Simulator(simulation_parameters=simulation_parameters, rng=rng)
 analysis = ChannelAnalysis(simulation_parameters=simulation_parameters)
 
@@ -64,8 +72,11 @@ key_rates_teo = np.array([], dtype=float)
 
 i = 0
 for d in tqdm(distances, desc="Distances"):
-    
-    Q_exp, E_exp, eta = simulator.run(l=d, iterations=iterations[i])
+
+    quantum_channel = QuantumChannel(source=alice, detector= bob, postProcess=post_process,l=d)
+    eta = quantum_channel.eta
+
+    Q_exp, E_exp = simulator.run(iterations=iterations[i], quantum_channel=quantum_channel, post_process=post_process)
     R_exp = analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
     
     Q_teo = analysis.compute_theoretical_gains(eta=eta)

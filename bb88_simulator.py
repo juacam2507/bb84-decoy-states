@@ -2,6 +2,7 @@ import numpy as np
 from source import Source
 from detector import Detector
 from postProcess import PostProcess
+from quantumChannel import QuantumChannel
 from tqdm import tqdm
 
 
@@ -46,7 +47,7 @@ class Simulator:
         self.state_num = len(simulation_parameters["decoy_intensities"]) + 1
         self.debug = simulation_parameters["debug"]
 
-    def run(self, l: float, iterations: int) -> tuple:
+    def run(self, iterations: int, quantum_channel: QuantumChannel, post_process : PostProcess) -> tuple:
         """
         Execute the quantum key distribution (QKD) simulation for a given channel length.
 
@@ -79,26 +80,16 @@ class Simulator:
         """
 
         # Declare objects
-        alice = Source(self.simulation_parameters, self.rng)
-        bob = Detector(self.simulation_parameters, self.rng, l)
-        post_process = PostProcess(self.simulation_parameters, self.rng)
-
         Q_cum = np.zeros(self.state_num, dtype=float)
         E_cum = np.zeros(self.state_num, dtype=float)
         Q_av = np.zeros(self.state_num, dtype=float)
         E_av = np.zeros(self.state_num, dtype=float)
 
         # Compute the channel efficiency
-        eta = bob.channel_efficiency()
         
         for iter in tqdm(range(iterations), desc="Iterations"):
 
-            # Generate the photon pulse for Alice
-            alice_bits, alice_basis, state_choice, photon_nums = alice.generate_pulses()
-
-            # Generate measurement basis and Bob's bits from the detection probabilities
-            bob_basis = bob.generate_basis_seq()
-            bob_bits = bob.generate_receptor_bits(eta, photon_nums, alice_bits)
+            alice_bits, alice_basis, state_choice, bob_basis, bob_bits = quantum_channel.send_pulses()
 
             # Compute gains for each state (Signal, weak, vacuum)
             gains = post_process.compute_gains(bob_bits, state_choice)
@@ -127,4 +118,4 @@ class Simulator:
             print(f"[DEBUG] Average gains after {iterations} iterations: {Q_av}")
             print(f"[DEBUG] Average QBER after {iterations} iterations: {E_av}")
 
-        return Q_av, E_av, eta
+        return Q_av, E_av

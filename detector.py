@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Detector:
-    def __init__(self, simulation_parameters: dict, rng: np.random.Generator, l: float):
+    def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
         """
         Initialize the photon detector for BB84 decoy-state QKD simulation.
 
@@ -33,7 +33,6 @@ class Detector:
         self.rng = rng
         self.debug = simulation_parameters["debug"]
 
-        self.l = l
         self.beta = simulation_parameters["channel_properties"]["beta"]
 
         self.t_bob = simulation_parameters["detector_properties"]["receiver_transmit"]
@@ -42,7 +41,7 @@ class Detector:
         self.y_0 = simulation_parameters["detector_properties"]["dark_count_rate"]
         self.e_0 = simulation_parameters["detector_properties"]["dark_count_error"]
 
-    def channel_efficiency(self) -> float:
+    def channel_efficiency(self, l: float) -> float:
         """
         Compute overall channel efficiency including fiber loss and receiver optics.
 
@@ -56,7 +55,7 @@ class Detector:
             Overall channel efficiency :math:`\\eta \\in [0, 1]`.
         """
 
-        t_ab = 10 ** (-1.0 * self.beta * self.l / 10.0)  # Channel transmittance
+        t_ab = 10 ** (-1.0 * self.beta * l / 10.0)  # Channel transmittance
         eta_bob = self.t_bob * self.eta_d  # Receiver efficiency
 
         if self.debug:
