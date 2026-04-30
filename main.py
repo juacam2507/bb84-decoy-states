@@ -28,16 +28,16 @@ simulation_parameters = {
 }
 
 distance_analysis_params = {
+    "n_sample" : 1,
     "distance_control" : {    
         "d_min" : 10,
         "d_max" : 10,
-        "d_sample" : 1,
-        "alpha" : 0.4,  # Controls the concentration of distances sampled
+        "alpha_dist" : 0.4,  # Controls the concentration of distances sampled
     },
     "iteration_control" : {
-        "iter_max" : 1,
         "iter_min" : 1,
-        "gamma" : 0.4   # Controls the concentration of iterations sampled
+        "iter_max" : 1,
+        "alpha_iter" : 0.4   # Controls the concentration of iterations sampled
     }
 }
 
@@ -61,7 +61,7 @@ iterations = (iter_min + (iter_max - iter_min) * (t**gamma)).astype(int)
 distances = d_min + (d_max - d_min) * (t**alpha)
 key_rates = np.array([], dtype=float)
 key_rates_teo = np.array([], dtype=float)
-print(iterations)
+
 i = 0
 for d in tqdm(distances, desc="Distances"):
     
