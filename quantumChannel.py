@@ -1,24 +1,22 @@
 import numpy as np
-from source import Source
-from detector import Detector
-from postProcess import PostProcess
+from emitter import Emitter
+from receiver import Receiver
 
 class QuantumChannel:
 
-    def __init__(self, simulation_parameters: dict, rng: np.random.Generator, source: Source, detector: Detector, postProcess: PostProcess, l:float):
-        
-        self.N = simulation_parameters["N"]
-        self.rng = rng
-        self.debug = simulation_parameters["debug"]
+    def __init__(self, simulation_parameters: dict, rng : np.random.Generator, l : float = 20.0):
 
+        self.simulation_parameters = simulation_parameters
+        self.debug = simulation_parameters["debug"]
+        
         self.beta = simulation_parameters["channel_properties"]["beta"]
         self.t_bob = simulation_parameters["detector_properties"]["receiver_transmit"]
         self.eta_d = simulation_parameters["detector_properties"]["detector_efficiency"]
-
-        self.eta = detector.channel_efficiency(l)
-        self.alice = source
-        self.bob = detector
-        self.postProcess = postProcess
+        
+        self.alice = Emitter(simulation_parameters=simulation_parameters, rng=rng)
+        self.bob = Receiver(simulation_parameters=simulation_parameters, rng=rng)
+        
+        self.eta = self.channel_efficiency(l)
 
     def channel_efficiency(self, l: float) -> float:
         """
@@ -39,7 +37,8 @@ class QuantumChannel:
 
         if self.debug:
             print(f"[DEBUG] Channel efficiency {t_ab*eta_bob}")
-
+            print("----------------------------------------------------------------")
+        
         return t_ab * eta_bob
 
     def send_pulses(self): 

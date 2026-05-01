@@ -1,21 +1,14 @@
 import numpy as np
-from tqdm import tqdm
-from bb88_simulator import Simulator
-from source import Source
-from detector import Detector
-from postProcess import PostProcess
-from channelAnalysis import ChannelAnalysis
-from quantumChannel import QuantumChannel
-from datetime import datetime
-import json
-import os
+from distanceSweep import DistanceSweep
+from data import Data
+
 
 simulation_parameters = {
-    "Iterations": 10,
+    "Iterations": 1,
     "N": 10_000_000,  # Number of generated pulses
     "mu": 0.55,  # Signal intensity
     "decoy_intensities": [0.10, 0.0],  # Decoy intensities
-    "state_probs": [0.90, 0.08 ,0.02],  # State probability
+    "state_probs": [0.90, 0.08, 0.02],  # State probability
     "channel_properties": {
         "beta": 0.2,  # Loss coefficient (dB/Km)
     },
@@ -28,90 +21,104 @@ simulation_parameters = {
     },
     "error_correction_efficiency": 1.2,
     "debug": True,
-
 }
 
-distance_analysis_params = {
-    "n_sample" : 1,
-    "distance_control" : {    
-        "d_min" : 10,
-        "d_max" : 10,
-        "alpha_dist" : 0.4,  # Controls the concentration of distances sampled
+distance_sweep_params = {
+    "n_sample": 10,
+    "distance_control": {
+        "d_min": 10,
+        "d_max": 100,
+        "alpha_dist": 0.4,  # Controls the concentration of distances sampled
     },
-    "iteration_control" : {
-        "iter_min" : 1,
-        "iter_max" : 1,
-        "alpha_iter" : 0.4   # Controls the concentration of iterations sampled
-    }
+    "iteration_control": {
+        "iter_min": 1,
+        "iter_max": 1,
+        "alpha_iter": 0.4,  # Controls the concentration of iterations sampled
+    },
 }
 
+iter = simulation_parameters["Iterations"]
 rng = np.random.default_rng()
 
-alice = Source(simulation_parameters, rng)
-bob = Detector(simulation_parameters, rng)
-post_process = PostProcess(simulation_parameters, rng)
+distance_sweep = DistanceSweep(
+    simulation_parameters=simulation_parameters,
+    distance_sweep_params=distance_sweep_params,
+    rng=rng,
+)
 
-simulator = Simulator(simulation_parameters=simulation_parameters, rng=rng)
-analysis = ChannelAnalysis(simulation_parameters=simulation_parameters)
+R_exp = distance_sweep.run_experimental()
+R_teo = distance_sweep.run_theoretical()
 
-d_min = 10
-d_max = 10
-d_sample = 1
-alpha = 0.4  # Controls the concentration of distances sampled
+distance_sweep_data = Data()
+R_data_header = ["Distance (Km)", "Key rate (bits/pulse)", "Theoretical key rate(bits/pulse)\n"]
+distance_sweep_data.write_data(distance_sweep.distances, R_exp, R_teo, header=R_data_header, filename="key_rate")
 
-iter_max = 1
-iter_min = 1
-gamma = 0.4 # Controls the concentration of iterations sampled
+# quantum_channel = QuantumChannel(simulation_parameters, rng, 30)
+# classical_channel = ClassicalChannel(simulation_parameters)
+# simulator = Simulator(quantum_channel=quantum_channel, classical_channel=classical_channel)
+# security_analysis = SecurityAnalysis(quantum_channel=quantum_channel)
 
-t = np.linspace(0.0, 1.0, d_sample)
+# Q_exp, E_exp = simulator.run(iterations=iter)
+# R_exp = security_analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
 
-iterations = (iter_min + (iter_max - iter_min) * (t**gamma)).astype(int)
-distances = d_min + (d_max - d_min) * (t**alpha)
-key_rates = np.array([], dtype=float)
-key_rates_teo = np.array([], dtype=float)
+# d_min = 10
+# d_max = 10
+# d_sample = 1
+# alpha = 0.4  # Controls the concentration of distances sampled
 
-i = 0
-for d in tqdm(distances, desc="Distances"):
+# iter_max = 1
+# iter_min = 1
+# gamma = 0.4 # Controls the concentration of iterations sampled
 
-    quantum_channel = QuantumChannel(source=alice, detector= bob, postProcess=post_process,l=d)
-    eta = quantum_channel.eta
+# t = np.linspace(0.0, 1.0, d_sample)
 
-    Q_exp, E_exp = simulator.run(iterations=iterations[i], quantum_channel=quantum_channel, post_process=post_process)
-    R_exp = analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
-    
-    Q_teo = analysis.compute_theoretical_gains(eta=eta)
-    E_teo = analysis.compute_theoretical_qbers(eta=eta, Q_teo=Q_teo)
-    R_teo = analysis.compute_key_rate(gains=Q_teo, qbers=E_exp)
-    
-    key_rates = np.append(key_rates, R_exp)
-    key_rates_teo = np.append(key_rates_teo, R_teo)
-    print(f"{d}, {R_exp}, {R_teo}")
-    i += 1
+# iterations = (iter_min + (iter_max - iter_min) * (t**gamma)).astype(int)
+# distances = d_min + (d_max - d_min) * (t**alpha)
+# key_rates = np.array([], dtype=float)
+# key_rates_teo = np.array([], dtype=float)
 
-data = np.column_stack([distances, key_rates, key_rates_teo])
-data_dir = "data"
-os.makedirs(data_dir, exist_ok=True)
+# i = 0
+# for d in tqdm(distances, desc="Distances"):
 
-timestamp = datetime.now()
+#     quantum_channel = QuantumChannel(source=alice, detector= bob, postProcess=post_process,l=d)
+#     eta = quantum_channel.eta
 
-meta = simulation_parameters.copy()
-meta["time"] = timestamp.strftime("%Y/%m/%d - %H:%M:%S")
+#     Q_exp, E_exp = simulator.run(iterations=iterations[i], quantum_channel=quantum_channel, post_process=post_process)
+#     R_exp = analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
 
-filename = f"data_{timestamp.strftime('%Y%m%d_%H%M%S')}_{simulation_parameters['N']}.csv"
-filepath = os.path.join(data_dir, filename)
+#     Q_teo = analysis.compute_theoretical_gains(eta=eta)
+#     E_teo = analysis.compute_theoretical_qbers(eta=eta, Q_teo=Q_teo)
+#     R_teo = analysis.compute_key_rate(gains=Q_teo, qbers=E_exp)
+
+#     key_rates = np.append(key_rates, R_exp)
+#     key_rates_teo = np.append(key_rates_teo, R_teo)
+#     print(f"{d}, {R_exp}, {R_teo}")
+#     i += 1
+
+# data = np.column_stack([distances, key_rates, key_rates_teo])
+# data_dir = "data"
+# os.makedirs(data_dir, exist_ok=True)
+
+# timestamp = datetime.now()
+
+# meta = simulation_parameters.copy()
+# meta["time"] = timestamp.strftime("%Y/%m/%d - %H:%M:%S")
+
+# filename = f"data_{timestamp.strftime('%Y%m%d_%H%M%S')}_{simulation_parameters['N']}.csv"
+# filepath = os.path.join(data_dir, filename)
 
 
-with open(filepath, "w", encoding="utf-8") as f:
-    meta_json = json.dumps(meta, indent=2, ensure_ascii=False)
-    for line in meta_json.splitlines():
-        f.write(f"#{line}\n")
-    f.write("#---\n")
+# with open(filepath, "w", encoding="utf-8") as f:
+#     meta_json = json.dumps(meta, indent=2, ensure_ascii=False)
+#     for line in meta_json.splitlines():
+#         f.write(f"#{line}\n")
+#     f.write("#---\n")
 
-    header = "Distance (Km), Key rate (1/pulse), Theoretical key rate(1/pulse)\n"
+#     header = "Distance (Km), Key rate (bit/pulse), Theoretical key rate(1/pulse)\n"
 
-    np.savetxt(
-        f,
-        data,
-        delimiter=",",
-        fmt="%.8f",
-    )
+#     np.savetxt(
+#         f,
+#         data,
+#         delimiter=",",
+#         fmt="%.8f",
+#     )

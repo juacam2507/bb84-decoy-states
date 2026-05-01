@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Detector:
+class Receiver:
     def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
         """
         Initialize the photon detector for BB84 decoy-state QKD simulation.
@@ -40,28 +40,6 @@ class Detector:
         self.e_d = simulation_parameters["detector_properties"]["detector_error"]
         self.y_0 = simulation_parameters["detector_properties"]["dark_count_rate"]
         self.e_0 = simulation_parameters["detector_properties"]["dark_count_error"]
-
-    def channel_efficiency(self, l: float) -> float:
-        """
-        Compute overall channel efficiency including fiber loss and receiver optics.
-
-        Total efficiency is given by :math:`\\eta = t_{ab} \\cdot \\eta_{bob}` where:
-        - Channel transmittance: :math:`t_{ab} = 10^{-\\beta l / 10}`
-        - Receiver efficiency: :math:`\\eta_{bob} = t_{bob} \\cdot \\eta_d`
-    
-        Returns
-        -------
-        float
-            Overall channel efficiency :math:`\\eta \\in [0, 1]`.
-        """
-
-        t_ab = 10 ** (-1.0 * self.beta * l / 10.0)  # Channel transmittance
-        eta_bob = self.t_bob * self.eta_d  # Receiver efficiency
-
-        if self.debug:
-            print(f"[DEBUG] Channel efficiency {t_ab*eta_bob}")
-
-        return t_ab * eta_bob
 
     def compute_detection_probabilities(
         self, eta: float, photon_nums: np.ndarray
@@ -115,6 +93,7 @@ class Detector:
             print(f"[DEBUG] Row sums before norm: {row_sums[:5]}")
             print(f"[DEBUG] Row sums after norm: {(detection_probs.sum(axis=1)[:5])}")
             print(f"[DEBUG] Probability matrix:\n{detection_probs[:3]}")
+            print("----------------------------------------------------------------")
 
         return detection_probs
 
@@ -153,6 +132,8 @@ class Detector:
             print(f"[DEBUG] Cumulative sum matrix: {cumulative_sum}")
             print(f"[DEBUG] Random detection choice vector: {aux}")
             print(f"[DEBUG] Choosen detection event: {detection_event}")
+            print("----------------------------------------------------------------")
+            
 
         return detection_event
 
@@ -200,7 +181,8 @@ class Detector:
 
         if self.debug:
             print(f"[DEBUG] Receptor bit array after detection: {receptor_bits}")
-
+            print("----------------------------------------------------------------")
+            
         return receptor_bits
 
     def generate_basis_seq(self) -> np.ndarray:
@@ -219,5 +201,6 @@ class Detector:
 
         if self.debug:
             print(f"[DEBUG] Receptor basis choice: {basis_seq}")
+            print("----------------------------------------------------------------")
 
         return basis_seq

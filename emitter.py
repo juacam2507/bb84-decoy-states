@@ -1,6 +1,6 @@
 import numpy as np
 
-class Source:
+class Emitter:
     def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
         """
         Initialize the photon source for the BB84 decoy-state protocol.
@@ -46,6 +46,7 @@ class Source:
 
         if self.debug:
             print(f"[DEBUG] Source bits: {source_bits}")
+            print("----------------------------------------------------------------")
 
         return source_bits
 
@@ -67,6 +68,7 @@ class Source:
 
         if self.debug:
             print(f"[DEBUG] Source basis: {source_basis}")
+            print("----------------------------------------------------------------")
 
         return source_basis
 
@@ -101,6 +103,7 @@ class Source:
 
         if self.debug:
             print(f"[DEBUG] State choice: {state_sequence}")
+            print("----------------------------------------------------------------")
 
         return state_sequence
 
@@ -136,6 +139,7 @@ class Source:
 
         if self.debug:
             print(f"[DEBUG] Photon numbers: {photon_nums}")
+            print("----------------------------------------------------------------")
 
         return photon_nums
 

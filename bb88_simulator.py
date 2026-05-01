@@ -1,13 +1,11 @@
 import numpy as np
-from source import Source
-from detector import Detector
-from postProcess import PostProcess
+from classicalChannel import ClassicalChannel
 from quantumChannel import QuantumChannel
 from tqdm import tqdm
 
 
 class Simulator:
-    def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
+    def __init__(self, quantum_channel: QuantumChannel, classical_channel: ClassicalChannel):
         """
         Initialize the QKD simulation environment.
 
@@ -41,13 +39,13 @@ class Simulator:
         debug : bool
             Flag to enable verbose output for debugging or performance analysis.
         """
+        self.quantum_channel = quantum_channel
+        self.classical_channel = classical_channel
+        self.simulation_parameters = quantum_channel.simulation_parameters
+        self.state_num = len(self.simulation_parameters["decoy_intensities"]) + 1
+        self.debug = self.simulation_parameters["debug"]
 
-        self.simulation_parameters = simulation_parameters
-        self.rng = rng
-        self.state_num = len(simulation_parameters["decoy_intensities"]) + 1
-        self.debug = simulation_parameters["debug"]
-
-    def run(self, iterations: int, quantum_channel: QuantumChannel, post_process : PostProcess) -> tuple:
+    def run(self, iterations: int) -> tuple:
         """
         Execute the quantum key distribution (QKD) simulation for a given channel length.
 
@@ -89,13 +87,13 @@ class Simulator:
         
         for iter in tqdm(range(iterations), desc="Iterations"):
 
-            alice_bits, alice_basis, state_choice, bob_basis, bob_bits = quantum_channel.send_pulses()
+            alice_bits, alice_basis, state_choice, bob_basis, bob_bits = self.quantum_channel.send_pulses()
 
             # Compute gains for each state (Signal, weak, vacuum)
-            gains = post_process.compute_gains(bob_bits, state_choice)
+            gains = self.classical_channel.compute_gains(bob_bits, state_choice)
 
             # Perform basis reconciliation
-            matching_basis_mask = post_process.basis_reconciliation(
+            matching_basis_mask = self.classical_channel.basis_reconciliation(
                 alice_basis, bob_basis
             )
             sifted_alice_bits = alice_bits[matching_basis_mask]
@@ -103,7 +101,7 @@ class Simulator:
             sifted_state_choice = state_choice[matching_basis_mask]
 
             # Compute QBER for each state
-            qbers = post_process.compute_qbers(
+            qbers =self.classical_channel.compute_qbers(
                 sifted_source_bits=sifted_alice_bits,
                 sifted_receptor_bits=sifted_bob_bits,
                 sifted_state_choice=sifted_state_choice,
@@ -117,5 +115,6 @@ class Simulator:
         if self.debug:
             print(f"[DEBUG] Average gains after {iterations} iterations: {Q_av}")
             print(f"[DEBUG] Average QBER after {iterations} iterations: {E_av}")
+            print("----------------------------------------------------------------")
 
         return Q_av, E_av

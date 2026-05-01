@@ -1,8 +1,8 @@
 import numpy as np
 
 
-class PostProcess:
-    def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
+class ClassicalChannel:
+    def __init__(self, simulation_parameters: dict):
         """
         Initialize post-processing for decoy-state BB84 parameter estimation.
 
@@ -23,7 +23,6 @@ class PostProcess:
             Random number generator for privacy amplification simulation.
         """
         self.N = simulation_parameters["N"]
-        self.rng = rng
         self.debug = simulation_parameters["debug"]
 
         self.signal_intensity = simulation_parameters["mu"]
@@ -68,6 +67,7 @@ class PostProcess:
             print(f"[DEBUG] State {state} Detected: {states_detected}")
             print(f"[DEBUG] State {state} Sent: {states_sent}")
             print(f"[DEBUG] Gain of state {state} = {states_detected/states_sent}")
+            print("----------------------------------------------------------------")
 
         return states_detected / states_sent
 
@@ -128,6 +128,7 @@ class PostProcess:
             print(
                 f"[DEBUG] Basis coincidence rate: {np.sum(matching_basis_mask)/len(matching_basis_mask)}"
             )
+            print("----------------------------------------------------------------")
         return matching_basis_mask
 
     def compute_state_qber(
@@ -183,6 +184,7 @@ class PostProcess:
             print(
                 f"[DEBUG] Quantum Bit Error Rate associated to state {state}: {num_state_err/num_states_detected}"
             )
+            print("----------------------------------------------------------------")
         return num_state_err / num_states_detected
 
     def compute_qbers(
@@ -221,6 +223,7 @@ class PostProcess:
 
         if self.debug:
             print(f"[DEBUG] QBER: {qbers}")
+            print("----------------------------------------------------------------")
 
         return qbers
 

@@ -1,28 +1,30 @@
 import numpy as np
+from quantumChannel import QuantumChannel
 
+class SecurityAnalysis:
+    def __init__(self, quantum_channel: QuantumChannel):
 
-class ChannelAnalysis:
-    def __init__(self, simulation_parameters: dict):
+        self.simulation_parameters = quantum_channel.simulation_parameters
+        self.debug = self.simulation_parameters["debug"]
 
-        self.debug = simulation_parameters["debug"]
-
-        self.simulation_parameters = simulation_parameters
-        self.signal_intensity = simulation_parameters["mu"]
-        self.decoy_intensities = simulation_parameters["decoy_intensities"]
+        self.signal_intensity = self.simulation_parameters["mu"]
+        self.decoy_intensities = self.simulation_parameters["decoy_intensities"]
         self.intensities = np.array(
             [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
         )
         self.state_num = len(self.intensities)
 
-        self.y_0 = simulation_parameters["detector_properties"]["dark_count_rate"]
-        self.e_0 = simulation_parameters["detector_properties"]["dark_count_error"]
-        self.e_d = simulation_parameters["detector_properties"]["detector_error"]
+        self.y_0 = self.simulation_parameters["detector_properties"]["dark_count_rate"]
+        self.e_0 = self.simulation_parameters["detector_properties"]["dark_count_error"]
+        self.e_d = self.simulation_parameters["detector_properties"]["detector_error"]
 
-        self.error_correction_efficiency = simulation_parameters[
+        self.error_correction_efficiency = self.simulation_parameters[
             "error_correction_efficiency"
         ]
+        
+        self.eta = quantum_channel.eta
 
-    def compute_theoretical_gains(self, eta: float) -> np.ndarray:
+    def compute_theoretical_gains(self) -> np.ndarray:
         """
         Compute theoretical channel gains Q_μ for all intensities.
 
@@ -58,14 +60,15 @@ class ChannelAnalysis:
 
         - Used for validation against Monte Carlo simulation results.
         """
-        Q_teo = self.y_0 + 1 - np.exp(-eta * self.intensities)
+        Q_teo = self.y_0 + 1 - np.exp(-self.eta * self.intensities)
 
         if self.debug:
             print(f"[DEBUG] Theoretical gains of the channel: {Q_teo}")
+            print("----------------------------------------------------------------")
 
         return Q_teo
 
-    def compute_theoretical_qbers(self, eta: float, Q_teo: np.ndarray) -> np.ndarray:
+    def compute_theoretical_qbers(self, Q_teo: np.ndarray) -> np.ndarray:
         """
         Compute theoretical QBERs E_μ for all intensities.
 
@@ -85,13 +88,14 @@ class ChannelAnalysis:
         """
 
         error_counts = self.e_0 * self.y_0 + self.e_d * (
-            1 - np.exp(-eta * self.intensities)
+            1 - np.exp(-self.eta * self.intensities)
         )
 
         E_teo = np.where(Q_teo > 1e-15, error_counts / Q_teo, 0.0)
 
         if self.debug:
             print(f"[DEBUG] Theoretical Errors of the channel: {E_teo}")
+            print("----------------------------------------------------------------")
 
         return E_teo
 
@@ -123,12 +127,14 @@ class ChannelAnalysis:
 
         if denom <= 0:
             print(f"[DEBUG] Final Y0_L: {0.0}")
+            print("----------------------------------------------------------------")
             return 0.0
 
         y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / denom
         if self.debug:
             print(f"[DEBUG] Computed Y0_L: {y_0_l}")
             print(f"[DEBUG] Final Y0_L: {np.clip(y_0_l, 0.0, 1.0)}")
+            print("----------------------------------------------------------------")
 
         return float(
             np.clip(y_0_l, 0.0, 1.0)
@@ -173,6 +179,7 @@ class ChannelAnalysis:
         if self.debug:
             print(f"[DEBUG] Computed Y1_L: {y_1_l}")
             print(f"[DEBUG] Final Y1_L: {y_1_l}")
+            print("----------------------------------------------------------------")
 
         return float(np.clip(y_1_l, 0.0, 1.0))
 
@@ -201,6 +208,7 @@ class ChannelAnalysis:
         if len(self.decoy_intensities) != 2 or y_1_l <= 0.0:
             if self.debug:
                 print(f"[DEBUG] Final e1_u: {0.5}")
+                print("----------------------------------------------------------------")
             return 0.5
 
         nu_1, nu_2 = self.decoy_intensities
@@ -284,6 +292,7 @@ class ChannelAnalysis:
         if self.debug:
             print(f"[DEBUG] Computed Secure Key Rate: {R}")
             print(f"[DEBUG] Final Secure Key Rate: {max(0.0, float(R))}")
+            print("----------------------------------------------------------------")
 
         return max(0.0, float(R))
 
@@ -347,6 +356,7 @@ class ChannelAnalysis:
         if self.debug:
             print(f"[DEBUG] Efficiency of signal state: {eta_mu}")
             print(f"[DEBUG] Efficiency of decoy state:{eta_nu}")
+            print("----------------------------------------------------------------")
 
         return eta_mu, eta_nu
 
@@ -420,5 +430,6 @@ class ChannelAnalysis:
         if self.debug:
             print(f"[DEBUG] Efficiency of signal state: {yields_mu}")
             print(f"[DEBUG] Efficiency of decoy state:{yields_nu}")
+            print("----------------------------------------------------------------")
 
         return yields_mu, yields_nu
