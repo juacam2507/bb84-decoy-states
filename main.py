@@ -2,7 +2,6 @@ import numpy as np
 from distanceSweep import DistanceSweep
 from data import Data
 
-
 simulation_parameters = {
     "Iterations": 1,
     "N": 10_000_000,  # Number of generated pulses
@@ -24,10 +23,10 @@ simulation_parameters = {
 }
 
 distance_sweep_params = {
-    "n_sample": 10,
+    "n_sample": 5,
     "distance_control": {
         "d_min": 10,
-        "d_max": 100,
+        "d_max": 50,
         "alpha_dist": 0.4,  # Controls the concentration of distances sampled
     },
     "iteration_control": {
@@ -49,9 +48,17 @@ distance_sweep = DistanceSweep(
 R_exp = distance_sweep.run_experimental()
 R_teo = distance_sweep.run_theoretical()
 
-distance_sweep_data = Data()
-R_data_header = ["Distance (Km)", "Key rate (bits/pulse)", "Theoretical key rate(bits/pulse)\n"]
-distance_sweep_data.write_data(distance_sweep.distances, R_exp, R_teo, header=R_data_header, filename="key_rate")
+distance_sweep_data = Data(
+    simulation_parameters=simulation_parameters, dir="key_rate_vs_distance"
+)
+R_data_header = [
+    "Distance (Km)",
+    "Key rate (bits/pulse)",
+    "Theoretical key rate(bits/pulse)\n",
+]
+distance_sweep_data.write_data(
+    distance_sweep.distances, R_exp, R_teo, header=R_data_header, filename="key_rate"
+)
 
 # quantum_channel = QuantumChannel(simulation_parameters, rng, 30)
 # classical_channel = ClassicalChannel(simulation_parameters)
