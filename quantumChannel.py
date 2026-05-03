@@ -1,6 +1,7 @@
 import numpy as np
 from emitter import Emitter
 from receiver import Receiver
+from attacker import Attacker
 
 class QuantumChannel:
 
@@ -15,8 +16,18 @@ class QuantumChannel:
         
         self.alice = Emitter(simulation_parameters=simulation_parameters, rng=rng)
         self.bob = Receiver(simulation_parameters=simulation_parameters, rng=rng)
-        
         self.eta = self.channel_efficiency(l)
+        
+        self.execute_attack = simulation_parameters["attack_properties"]["execute_attack"]
+        self.attack_type = simulation_parameters["attack_properties"]["attack_type"]
+        
+        if self.execute_attack:
+            self.eve = Attacker(simulation_parameters=simulation_parameters)
+            
+            if self.attack_type == "BS": 
+                self.eta = self.eve.bs_attack(self.eta)
+        
+            
 
     def channel_efficiency(self, l: float) -> float:
         """
@@ -45,6 +56,9 @@ class QuantumChannel:
     
     # Generate the photon pulse for Alice
         alice_bits, alice_basis, state_choice, photon_nums = self.alice.generate_pulses() 
+        
+        if self.execute_attack and self.attack_type == "PNS":
+            photon_nums = self.eve.pns_attack(photon_nums=photon_nums)
         
         # Generate measurement basis and Bob's bits from the detection probabilities
         bob_basis = self.bob.generate_basis_seq()

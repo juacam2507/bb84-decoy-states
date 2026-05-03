@@ -169,7 +169,9 @@ class SecurityAnalysis:
         denom = (nu_1 - nu_2) * (mu - (nu_1 + nu_2))
 
         if denom <= 0:
-            return 0.0
+            y_1_l = 0.0
+            print(f"[DEBUG] Final Y1_L: {y_1_l}")
+            return y_1_l
 
         y_1_l = (mu / denom) * (
             Q_d1 * np.exp(nu_1)
@@ -178,7 +180,7 @@ class SecurityAnalysis:
         )
         if self.debug:
             print(f"[DEBUG] Computed Y1_L: {y_1_l}")
-            print(f"[DEBUG] Final Y1_L: {y_1_l}")
+            print(f"[DEBUG] Final Y1_L: {float(np.clip(y_1_l, 0.0, 1.0))}")
             print("----------------------------------------------------------------")
 
         return float(np.clip(y_1_l, 0.0, 1.0))

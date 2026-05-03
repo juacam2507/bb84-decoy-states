@@ -27,9 +27,11 @@ class ClassicalChannel:
 
         self.signal_intensity = simulation_parameters["mu"]
         self.decoy_intensities = simulation_parameters["decoy_intensities"]
-        self.intensities = np.array([self.signal_intensity] + self.decoy_intensities, dtype= np.float64)
+        self.intensities = np.array(
+            [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
+        )
         self.state_num = len(self.intensities)
-        
+
         self.error_correction_efficiency = simulation_parameters[
             "error_correction_efficiency"
         ]
@@ -105,7 +107,7 @@ class ClassicalChannel:
     def basis_reconciliation(
         self, source_basis: np.ndarray, receptor_basis: np.ndarray
     ) -> np.ndarray:
-        """
+        """3*/
         Sift pulses with matching bases (Z↔Z, X↔X).
 
         Parameters
@@ -226,5 +228,3 @@ class ClassicalChannel:
             print("----------------------------------------------------------------")
 
         return qbers
-
-    

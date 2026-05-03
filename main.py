@@ -4,7 +4,7 @@ from data import Data
 
 simulation_parameters = {
     "Iterations": 1,
-    "N": 10_000_000,  # Number of generated pulses
+    "N": 1_000_000,  # Number of generated pulses
     "mu": 0.55,  # Signal intensity
     "decoy_intensities": [0.10, 0.0],  # Decoy intensities
     "state_probs": [0.90, 0.08, 0.02],  # State probability
@@ -17,6 +17,11 @@ simulation_parameters = {
         "detector_error": 0.03,  # Probability of a pulse measured in the correct basis to trigger the wrong detector
         "dark_count_rate": 4e-9,  # Probability of dark counts
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
+    },
+    "attack_properties": {
+        "execute_attack": True,  # Bool value to determine if the attack is performed
+        "attack_type": "BS",  # Type of attack. "PNS" or "BS".
+        "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
     "error_correction_efficiency": 1.2,
     "debug": True,
