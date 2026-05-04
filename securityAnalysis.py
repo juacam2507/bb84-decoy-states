@@ -1,6 +1,7 @@
 import numpy as np
 from quantumChannel import QuantumChannel
 
+
 class SecurityAnalysis:
     def __init__(self, quantum_channel: QuantumChannel):
 
@@ -21,7 +22,7 @@ class SecurityAnalysis:
         self.error_correction_efficiency = self.simulation_parameters[
             "error_correction_efficiency"
         ]
-        
+
         self.eta = quantum_channel.eta
 
     def compute_theoretical_gains(self) -> np.ndarray:
@@ -99,7 +100,7 @@ class SecurityAnalysis:
 
         return E_teo
 
-    def background_yield_bound(self, gains: np.ndarray) -> float:
+    def background_yield_bound(self, state_gains: np.ndarray) -> np.ndarray:
         """
         Estimate lower bound on vacuum yield Y₀ᴸ using two decoys.
 
@@ -117,18 +118,18 @@ class SecurityAnalysis:
         """
 
         if len(self.decoy_intensities) != 2:
-            return 0.0
+            return np.zeros_like(state_gains[1])
 
         nu_1, nu_2 = self.decoy_intensities
 
-        Q_d1, Q_d2 = gains[1], gains[2]
+        Q_d1, Q_d2 = state_gains[1], state_gains[2]
 
         denom = nu_1 - nu_2
 
         if denom <= 0:
             print(f"[DEBUG] Final Y0_L: {0.0}")
             print("----------------------------------------------------------------")
-            return 0.0
+            return np.zeros_like(state_gains[1])
 
         y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / denom
         if self.debug:
@@ -136,11 +137,11 @@ class SecurityAnalysis:
             print(f"[DEBUG] Final Y0_L: {np.clip(y_0_l, 0.0, 1.0)}")
             print("----------------------------------------------------------------")
 
-        return float(
-            np.clip(y_0_l, 0.0, 1.0)
-        )  # Bounds the yield to values between 0 and 1
+        return np.clip(y_0_l, 0.0, 1.0)  # Bounds the yield to values between 0 and 1
 
-    def single_photon_yield_bound(self, gains: np.ndarray, y_0_l: float) -> float:
+    def single_photon_yield_bound(
+        self, state_gains: np.ndarray, y_0_l: np.ndarray
+    ) -> np.ndarray:
         """
         Estimate lower bound on single-photon yield Y₁ᴸ.
 
@@ -160,16 +161,16 @@ class SecurityAnalysis:
         """
 
         if len(self.decoy_intensities) != 2:
-            return 0.0
+            return np.zeros_like(state_gains[0])
 
         mu = self.signal_intensity
         nu_1, nu_2 = self.decoy_intensities
-        Q_s, Q_d1, Q_d2 = gains[0], gains[1], gains[2]
+        Q_s, Q_d1, Q_d2 = state_gains[0], state_gains[1], state_gains[2]
 
         denom = (nu_1 - nu_2) * (mu - (nu_1 + nu_2))
 
         if denom <= 0:
-            y_1_l = 0.0
+            y_1_l = np.zeros_like(state_gains[0])
             print(f"[DEBUG] Final Y1_L: {y_1_l}")
             return y_1_l
 
@@ -180,14 +181,14 @@ class SecurityAnalysis:
         )
         if self.debug:
             print(f"[DEBUG] Computed Y1_L: {y_1_l}")
-            print(f"[DEBUG] Final Y1_L: {float(np.clip(y_1_l, 0.0, 1.0))}")
+            print(f"[DEBUG] Final Y1_L: {np.clip(y_1_l, 0.0, 1.0)}")
             print("----------------------------------------------------------------")
 
-        return float(np.clip(y_1_l, 0.0, 1.0))
+        return np.clip(y_1_l, 0.0, 1.0)
 
     def single_photon_error_bound(
-        self, gains: np.ndarray, qbers: np.ndarray, y_1_l: float
-    ) -> float:
+        self, state_gains: np.ndarray, state_errors: np.ndarray, y_1_l: np.ndarray
+    ) -> np.ndarray:
         """
         Estimate upper bound on single-photon error rate e₁ᵘ.
 
@@ -207,34 +208,32 @@ class SecurityAnalysis:
         float
             Single-photon phase error upper bound e₁ᵘ ∈ [0, 0.5].
         """
-        if len(self.decoy_intensities) != 2 or y_1_l <= 0.0:
+        if len(self.decoy_intensities) != 2:
             if self.debug:
-                print(f"[DEBUG] Final e1_u: {0.5}")
-                print("----------------------------------------------------------------")
-            return 0.5
+                print(f"[DEBUG] Final e1_u: {np.full_like(state_gains[0], 0.5)}")
+                print(
+                    "----------------------------------------------------------------"
+                )
+            return np.full_like(state_gains[0], 0.5)
 
         nu_1, nu_2 = self.decoy_intensities
 
-        Q_d1, Q_d2 = gains[1], gains[2]
+        Q_d1, Q_d2 = state_gains[1], state_gains[2]
 
-        E_d1, E_d2 = qbers[1], qbers[2]
+        E_d1, E_d2 = state_errors[1], state_errors[2]
 
         denom = (nu_1 - nu_2) * y_1_l
+        numer = E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)
 
-        if denom <= 0.0:
-            if self.debug:
-                print(f"[DEBUG] Final e1_u: {0.5}")
-            return 0.5
-
-        e_1_u = (E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)) / denom
-
+        e_1_u = np.where(denom > 0, numer/denom, 0.5)
+        
         if self.debug:
             print(f"[DEBUG] Computed e1_u: {e_1_u}")
-            print(f"[DEBUG] Final e1_u: {float(np.clip(e_1_u, 0.0, 0.5))}")
+            print(f"[DEBUG] Final e1_u: {np.clip(e_1_u, 0.0, 0.5)}")
 
-        return float(np.clip(e_1_u, 0.0, 0.5))
+        return np.clip(e_1_u, 0.0, 0.5)
 
-    def shannon_entropy(self, x: float):
+    def shannon_entropy(self, x: np.ndarray):
         """
         Binary Shannon entropy function H(x) = -xlog₂(x)-(1-x)log₂(1-x).
 
@@ -248,12 +247,16 @@ class SecurityAnalysis:
         float
             H(x), with H(0) = H(1) = 0 by continuity.
         """
-        if x > 0 and x < 1:
-            return -x * np.log2(x) - (1 - x) * np.log2(1 - x)
-        else:
-            return 0
+        in_range_mask = (x > 0) & (x < 1)
+        H_2 = np.zeros_like(x)
+        
+        H_2[in_range_mask] = -x[in_range_mask] * np.log2(x[in_range_mask]) - (1 - x[in_range_mask]) * np.log2(1 - x[in_range_mask])
+        return H_2
+    
 
-    def compute_key_rate(self, gains: np.ndarray, qbers: np.ndarray) -> float:
+    def compute_key_rate(
+        self, state_gains: np.ndarray, state_errors: np.ndarray
+    ) -> float:
         """
         Compute asymptotic secure key rate (GLLP formula).
 
@@ -278,78 +281,80 @@ class SecurityAnalysis:
             Secure key rate R ≥ 0 (bits per pulse).
         """
         mu = self.signal_intensity
-        Q_s = gains[0]
-        E_s = qbers[0]
+        Q_s = state_gains[0]
+        E_s = state_errors[0]
 
-        y_0_l = self.background_yield_bound(gains=gains)
-        y_1_l = self.single_photon_yield_bound(gains=gains, y_0_l=y_0_l)
-        e_1_u = self.single_photon_error_bound(gains=gains, qbers=qbers, y_1_l=y_1_l)
+        y_0_l = self.background_yield_bound(state_gains=state_gains)
+        y_1_l = self.single_photon_yield_bound(state_gains=state_gains, y_0_l=y_0_l)
+        e_1_u = self.single_photon_error_bound(
+            state_gains=state_gains, state_errors=state_errors, y_1_l=y_1_l
+        )
 
-        Q_1 = max(0.0, y_1_l * mu * np.exp(-mu))
+        Q_single = y_1_l * mu * np.exp(-mu)
 
-        R = 0.5 * (
+        key_rates = 0.5 * (
             -Q_s * self.error_correction_efficiency * self.shannon_entropy(E_s)
-            + Q_1 * (1 - self.shannon_entropy(e_1_u))
+            + Q_single * (1 - self.shannon_entropy(e_1_u))
         )
         if self.debug:
-            print(f"[DEBUG] Computed Secure Key Rate: {R}")
-            print(f"[DEBUG] Final Secure Key Rate: {max(0.0, float(R))}")
+            print(f"[DEBUG] Computed Secure Key Rate: {key_rates}")
+            print(f"[DEBUG] Final Secure Key Rate: {np.clip(key_rates, 0.0 , 1.0)}")
             print("----------------------------------------------------------------")
 
-        return max(0.0, float(R))
+        return np.clip(key_rates, 0.0, 1.0)
 
-    def compute_state_eta(self, gains: np.ndarray) -> tuple:
+    def compute_state_eta(self, state_gains: np.ndarray) -> tuple:
         """
-            Compute the effective transmission efficiencies for the signal and decoy states.
+        Compute the effective transmission efficiencies for the signal and decoy states.
 
-            This function estimates the transmission efficiency for the signal and decoy
-            states by inverting the gain model and accounting for the background
-            contribution ``self.y_0``.
+        This function estimates the transmission efficiency for the signal and decoy
+        states by inverting the gain model and accounting for the background
+        contribution ``self.y_0``.
 
-            The efficiencies are computed as:
+        The efficiencies are computed as:
 
-            .. math::
+        .. math::
 
-                \\eta_\\mu = -\\frac{\\ln\\left(1 - (Q_\\mu - Y_0)\\right)}{\\mu}
+            \\eta_\\mu = -\\frac{\\ln\\left(1 - (Q_\\mu - Y_0)\\right)}{\\mu}
 
-            .. math::
+        .. math::
 
-                \\eta_\\nu = -\\frac{\\ln\\left(1 - (Q_\\nu - Y_0)\\right)}{\\nu}
+            \\eta_\\nu = -\\frac{\\ln\\left(1 - (Q_\\nu - Y_0)\\right)}{\\nu}
 
-            where:
+        where:
 
-            - :math:`Q_\\mu` is the observed gain for the signal state,
-            - :math:`Q_\\nu` is the observed gain for the decoy state,
-            - :math:`Y_0` is the background (dark count) contribution,
-            - :math:`\\mu` is the signal-state intensity,
-            - :math:`\\nu` is the decoy-state intensity,
-            - :math:`\\eta_\\mu` and :math:`\\eta_\\nu` are the corresponding
-            transmission efficiencies.
+        - :math:`Q_\\mu` is the observed gain for the signal state,
+        - :math:`Q_\\nu` is the observed gain for the decoy state,
+        - :math:`Y_0` is the background (dark count) contribution,
+        - :math:`\\mu` is the signal-state intensity,
+        - :math:`\\nu` is the decoy-state intensity,
+        - :math:`\\eta_\\mu` and :math:`\\eta_\\nu` are the corresponding
+        transmission efficiencies.
 
-            Parameters
-            ----------
-            gains : np.ndarray
-                Array containing the observed gains for the states. The function expects
-                the first two entries to correspond to ``Q_mu`` and ``Q_nu``.
+        Parameters
+        ----------
+        gains : np.ndarray
+            Array containing the observed gains for the states. The function expects
+            the first two entries to correspond to ``Q_mu`` and ``Q_nu``.
 
-            Returns
-            -------
-            tuple
-                A tuple containing:
+        Returns
+        -------
+        tuple
+            A tuple containing:
 
-                - eta_mu : float
-                    Effective transmission efficiency for the signal state.
-                - eta_nu : float
-                    Effective transmission efficiency for the decoy state.
+            - eta_mu : float
+                Effective transmission efficiency for the signal state.
+            - eta_nu : float
+                Effective transmission efficiency for the decoy state.
 
-            Notes
-            -----
-            - The function currently unpacks ``gains`` as ``Q_mu, Q_nu, _``.
-            - The function also unpacks ``self.intensities`` as ``mu, nu, _``.
-            - If ``self.debug`` is ``True``, the computed efficiencies are printed.
-            - The logarithm arguments must satisfy :math:`1 - (Q - Y_0) > 0`.
-        """ 
-        Q_mu, Q_nu, _ = gains
+        Notes
+        -----
+        - The function currently unpacks ``gains`` as ``Q_mu, Q_nu, _``.
+        - The function also unpacks ``self.intensities`` as ``mu, nu, _``.
+        - If ``self.debug`` is ``True``, the computed efficiencies are printed.
+        - The logarithm arguments must satisfy :math:`1 - (Q - Y_0) > 0`.
+        """
+        Q_mu, Q_nu = state_gains[0], state_gains[1]
         mu, nu, _ = self.intensities
 
         eta_mu = -np.log(1 - (Q_mu - self.y_0)) / mu
@@ -362,7 +367,7 @@ class SecurityAnalysis:
 
         return eta_mu, eta_nu
 
-    def compute_state_yields(self, photon_nums: list, gains: np.ndarray) -> tuple:
+    def compute_state_yields(self, photon_nums: list, state_gains: np.ndarray) -> tuple:
         """
         Compute the single‑photon yields for the signal and decoy states at given photon numbers.
 
@@ -420,11 +425,11 @@ class SecurityAnalysis:
 
         yields_mu = []
         yields_nu = []
-        eta_mu, eta_nu = self.compute_state_eta(gains=gains)
-        
-        for num in photon_nums: 
-            Y_n_mu = self.y_0 + 1 - (1 - eta_mu)**num
-            Y_n_nu = self.y_0 + 1 - (1 - eta_nu)**num
+        eta_mu, eta_nu = self.compute_state_eta(state_gains=state_gains)
+
+        for num in photon_nums:
+            Y_n_mu = self.y_0 + 1 - (1 - eta_mu) ** num
+            Y_n_nu = self.y_0 + 1 - (1 - eta_nu) ** num
 
             yields_mu.append(Y_n_mu)
             yields_nu.append(Y_n_nu)

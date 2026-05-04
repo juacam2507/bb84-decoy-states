@@ -1,10 +1,10 @@
 import numpy as np
 from distanceSweep import DistanceSweep
-from data import Data
+from dataHandler import DataHandler
 
 simulation_parameters = {
-    "Iterations": 1,
-    "N": 1_000_000,  # Number of generated pulses
+    "Iterations": 50,
+    "N": 50_000_000,  # Number of generated pulses
     "mu": 0.55,  # Signal intensity
     "decoy_intensities": [0.10, 0.0],  # Decoy intensities
     "state_probs": [0.90, 0.08, 0.02],  # State probability
@@ -19,24 +19,24 @@ simulation_parameters = {
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "attack_properties": {
-        "execute_attack": True,  # Bool value to determine if the attack is performed
+        "execute_attack": False,  # Bool value to determine if the attack is performed
         "attack_type": "BS",  # Type of attack. "PNS" or "BS".
         "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
     "error_correction_efficiency": 1.2,
-    "debug": True,
+    "debug": False,
 }
 
 distance_sweep_params = {
-    "n_sample": 5,
+    "n_sample": 60,
     "distance_control": {
         "d_min": 10,
-        "d_max": 50,
+        "d_max": 140,
         "alpha_dist": 0.4,  # Controls the concentration of distances sampled
     },
     "iteration_control": {
-        "iter_min": 1,
-        "iter_max": 1,
+        "iter_min": simulation_parameters["Iterations"],
+        "iter_max": simulation_parameters["Iterations"],
         "alpha_iter": 0.4,  # Controls the concentration of iterations sampled
     },
 }
@@ -53,84 +53,21 @@ distance_sweep = DistanceSweep(
 R_exp = distance_sweep.run_experimental()
 R_teo = distance_sweep.run_theoretical()
 
-distance_sweep_data = Data(
-    simulation_parameters=simulation_parameters, dir="key_rate_vs_distance"
+data_handler = DataHandler(dir="key_rate_vs_distance")
+first_column = "Distance (Km)"
+last_column = "Theoretical Key rates (bits/pulse)"
+
+middle_columns = []
+for i in range(iter):
+    middle_columns.append(f"Key rate {i+1} (bits/pulse)")
+
+R_data_header = [first_column] + middle_columns + [last_column]
+
+data_handler.write_data(
+    distance_sweep.distances,
+    R_exp,
+    R_teo,
+    header=R_data_header,
+    filename="key_rate",
+    simulation_parameters=simulation_parameters,
 )
-R_data_header = [
-    "Distance (Km)",
-    "Key rate (bits/pulse)",
-    "Theoretical key rate(bits/pulse)\n",
-]
-distance_sweep_data.write_data(
-    distance_sweep.distances, R_exp, R_teo, header=R_data_header, filename="key_rate"
-)
-
-# quantum_channel = QuantumChannel(simulation_parameters, rng, 30)
-# classical_channel = ClassicalChannel(simulation_parameters)
-# simulator = Simulator(quantum_channel=quantum_channel, classical_channel=classical_channel)
-# security_analysis = SecurityAnalysis(quantum_channel=quantum_channel)
-
-# Q_exp, E_exp = simulator.run(iterations=iter)
-# R_exp = security_analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
-
-# d_min = 10
-# d_max = 10
-# d_sample = 1
-# alpha = 0.4  # Controls the concentration of distances sampled
-
-# iter_max = 1
-# iter_min = 1
-# gamma = 0.4 # Controls the concentration of iterations sampled
-
-# t = np.linspace(0.0, 1.0, d_sample)
-
-# iterations = (iter_min + (iter_max - iter_min) * (t**gamma)).astype(int)
-# distances = d_min + (d_max - d_min) * (t**alpha)
-# key_rates = np.array([], dtype=float)
-# key_rates_teo = np.array([], dtype=float)
-
-# i = 0
-# for d in tqdm(distances, desc="Distances"):
-
-#     quantum_channel = QuantumChannel(source=alice, detector= bob, postProcess=post_process,l=d)
-#     eta = quantum_channel.eta
-
-#     Q_exp, E_exp = simulator.run(iterations=iterations[i], quantum_channel=quantum_channel, post_process=post_process)
-#     R_exp = analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
-
-#     Q_teo = analysis.compute_theoretical_gains(eta=eta)
-#     E_teo = analysis.compute_theoretical_qbers(eta=eta, Q_teo=Q_teo)
-#     R_teo = analysis.compute_key_rate(gains=Q_teo, qbers=E_exp)
-
-#     key_rates = np.append(key_rates, R_exp)
-#     key_rates_teo = np.append(key_rates_teo, R_teo)
-#     print(f"{d}, {R_exp}, {R_teo}")
-#     i += 1
-
-# data = np.column_stack([distances, key_rates, key_rates_teo])
-# data_dir = "data"
-# os.makedirs(data_dir, exist_ok=True)
-
-# timestamp = datetime.now()
-
-# meta = simulation_parameters.copy()
-# meta["time"] = timestamp.strftime("%Y/%m/%d - %H:%M:%S")
-
-# filename = f"data_{timestamp.strftime('%Y%m%d_%H%M%S')}_{simulation_parameters['N']}.csv"
-# filepath = os.path.join(data_dir, filename)
-
-
-# with open(filepath, "w", encoding="utf-8") as f:
-#     meta_json = json.dumps(meta, indent=2, ensure_ascii=False)
-#     for line in meta_json.splitlines():
-#         f.write(f"#{line}\n")
-#     f.write("#---\n")
-
-#     header = "Distance (Km), Key rate (bit/pulse), Theoretical key rate(1/pulse)\n"
-
-#     np.savetxt(
-#         f,
-#         data,
-#         delimiter=",",
-#         fmt="%.8f",
-#     )

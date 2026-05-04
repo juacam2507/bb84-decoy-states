@@ -35,7 +35,7 @@ class DistanceSweep:
         self.distances = self.generate_array(
             min=self.d_min, max=self.d_max, alpha=self.alpha_dist, type=float
         )
-        
+
         if self.debug:
             print(f"[DEBUG] Distances: {self.distances}")
             print(f"[DEBUG] Iterations: {self.iterations}")
@@ -52,7 +52,7 @@ class DistanceSweep:
 
     def run_experimental(self):
 
-        key_rates = np.array([], dtype=float)
+        key_rates = []
 
         i = 0
 
@@ -64,19 +64,24 @@ class DistanceSweep:
             )
             security_analysis = SecurityAnalysis(quantum_channel=quantum_channel)
 
-            Q_exp, E_exp = simulator.run(iterations=self.iterations[i])
-            R_exp = security_analysis.compute_key_rate(gains=Q_exp, qbers=E_exp)
+            state_gains, state_errors = simulator.run(iterations=self.iterations[i])
+            R_exp = security_analysis.compute_key_rate(
+                state_gains=state_gains, state_errors=state_errors
+            )
 
-            key_rates = np.append(key_rates, R_exp)
-        
-        if self.debug:    
+            key_rates.append([R_exp])
+            
+        key_rates = np.vstack(key_rates)
+
+        if self.debug:
             print(f"[DEBUG] Experimental Key rates: {key_rates}")
+            print("----------------------------------------------------------------")
 
         return key_rates
 
     def run_theoretical(self):
-        
-        key_rates = np.array([], dtype=float)
+
+        key_rates = []
 
         i = 0
 
@@ -86,11 +91,12 @@ class DistanceSweep:
 
             Q_teo = security_analysis.compute_theoretical_gains()
             E_teo = security_analysis.compute_theoretical_qbers(Q_teo=Q_teo)
-            R_teo = security_analysis.compute_key_rate(gains=Q_teo, qbers=E_teo)
+            R_teo = security_analysis.compute_key_rate(state_gains=Q_teo, state_errors=E_teo)
 
-            key_rates = np.append(key_rates, R_teo)
-            
-        if self.debug:    
+            key_rates = np.append(key_rates, [R_teo])
+
+        if self.debug:
             print(f"[DEBUG] Theoretical Key rates: {key_rates}")
+            print("----------------------------------------------------------------")
 
         return key_rates

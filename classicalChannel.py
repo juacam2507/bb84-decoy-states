@@ -70,7 +70,7 @@ class ClassicalChannel:
             print(f"[DEBUG] State {state} Sent: {states_sent}")
             print(f"[DEBUG] Gain of state {state} = {states_detected/states_sent}")
             print("----------------------------------------------------------------")
-
+        
         return states_detected / states_sent
 
     def compute_gains(
