@@ -225,8 +225,8 @@ class SecurityAnalysis:
         denom = (nu_1 - nu_2) * y_1_l
         numer = E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)
 
-        e_1_u = np.where(denom > 0, numer/denom, 0.5)
-        
+        e_1_u = np.where(denom > 0, numer / denom, 0.5)
+
         if self.debug:
             print(f"[DEBUG] Computed e1_u: {e_1_u}")
             print(f"[DEBUG] Final e1_u: {np.clip(e_1_u, 0.0, 0.5)}")
@@ -249,10 +249,11 @@ class SecurityAnalysis:
         """
         in_range_mask = (x > 0) & (x < 1)
         H_2 = np.zeros_like(x)
-        
-        H_2[in_range_mask] = -x[in_range_mask] * np.log2(x[in_range_mask]) - (1 - x[in_range_mask]) * np.log2(1 - x[in_range_mask])
+
+        H_2[in_range_mask] = -x[in_range_mask] * np.log2(x[in_range_mask]) - (
+            1 - x[in_range_mask]
+        ) * np.log2(1 - x[in_range_mask])
         return H_2
-    
 
     def compute_key_rate(
         self, state_gains: np.ndarray, state_errors: np.ndarray
@@ -434,9 +435,16 @@ class SecurityAnalysis:
             yields_mu.append(Y_n_mu)
             yields_nu.append(Y_n_nu)
 
+            if self.debug:
+                print(f"[DEBUG] Yield of {num} signal photons:\n {Y_n_mu}")
+                print(f"[DEBUG] Yield of {num} decoy photons:\n {Y_n_nu}")
+                print(
+                    "----------------------------------------------------------------"
+                )
+
         if self.debug:
-            print(f"[DEBUG] Efficiency of signal state: {yields_mu}")
-            print(f"[DEBUG] Efficiency of decoy state:{yields_nu}")
+            print(f"[DEBUG] Yields of signal photons: {yields_mu}")
+            print(f"[DEBUG] Yield of decoy photons: {yields_nu}")
             print("----------------------------------------------------------------")
 
         return yields_mu, yields_nu

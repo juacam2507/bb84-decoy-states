@@ -1,10 +1,10 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from dataHandler import DataHandler
 import os
-
 
 
 class Plotter:
@@ -94,3 +94,20 @@ class Plotter:
 
         plt.tight_layout()
         plt.show()
+
+    def yield_plot(self, filename):
+
+        data_handler = DataHandler("yield_assessment")
+
+        filepath = os.path.join(data_handler.dirpath, filename)
+
+        df = data_handler.read_data(filepath=filepath)
+
+        photon_nums = df.iloc[:, 0].to_numpy(dtype=int)
+        signal_data = df.filter(like="Signal Yield").to_numpy(dtype=float)
+        decoy_data = df.filter(like="Decoy Yield").to_numpy(dtype=float)
+
+        n_iter = signal_data.shape[0]
+
+        box_data = []
+        labels = []
