@@ -108,6 +108,41 @@ class Plotter:
         decoy_data = df.filter(like="Decoy Yield").to_numpy(dtype=float)
 
         n_iter = signal_data.shape[0]
+        n_photon_nums = len(photon_nums)
 
         box_data = []
         labels = []
+
+        for n in range(n_iter):
+            box_data.append(signal_data[n, :])
+            box_data.append(decoy_data[n, :])
+
+            labels.append(rf"$Y_{n+1}^\mu$")
+            labels.append(rf"$Y_{n+1}^\nu$")
+
+        print(np.vstack(box_data))
+
+        fig, ax = plt.subplots(figsize=(14, 6))
+
+        ax.boxplot(
+            box_data,
+            positions=range(1, 1 + 2 * n_iter),
+            patch_artist=True,
+            boxprops=dict(facecolor="steelblue", alpha=0.55),
+            medianprops=dict(color="navy", linewidth=2),
+            flierprops=dict(
+                marker="o", markerfacecolor="steelblue", markersize=4, alpha=0.6
+            ),
+        )
+
+        # ax.set_yscale("log")
+
+        ax.set_xticks(range(1, 1 + 2 * n_iter))
+        ax.set_xticklabels(labels=labels, fontsize=14)
+        ax.set_xlabel(r"Photon number and type", fontsize=16)
+
+        ax.set_ylabel("Yield $Y$", fontsize=16)
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+
+        plt.tight_layout()
+        plt.show()

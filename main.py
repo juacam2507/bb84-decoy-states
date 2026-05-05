@@ -4,8 +4,8 @@ from yieldAnalysis import YieldAnalysis
 from dataHandler import DataHandler
 
 simulation_parameters = {
-    "iterations": 5,
-    "N": 1_000_000,  # Number of generated pulses
+    "iterations": 100,
+    "N": 10_000_000,  # Number of generated pulses
     "mu": 0.55,  # Signal intensity
     "decoy_intensities": [0.10, 0.0],  # Decoy intensities
     "state_probs": [0.90, 0.08, 0.02],  # State probability
@@ -20,8 +20,8 @@ simulation_parameters = {
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "attack_properties": {
-        "execute_attack": False,  # Bool value to determine if the attack is performed
-        "attack_type": "PNS",  # Type of attack. "PNS" or "BS".
+        "execute_attack": True,  # Bool value to determine if the attack is performed
+        "attack_type": "BS",  # Type of attack. "PNS" or "BS".
         "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
     "error_correction_efficiency": 1.2,
