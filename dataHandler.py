@@ -10,12 +10,12 @@ class DataHandler:
         self,
         dir: str = "",
     ):
-
+        self.dir = dir
         self.data_dir = "data"
         os.makedirs(self.data_dir, exist_ok=True)
 
         if dir:
-            self.dirpath = os.path.join(self.data_dir, dir)
+            self.dirpath = os.path.join(self.data_dir, self.dir)
             os.makedirs(self.dirpath, exist_ok=True)
         else:
             self.dirpath = self.data_dir

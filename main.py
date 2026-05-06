@@ -4,23 +4,23 @@ from yieldAnalysis import YieldAnalysis
 from dataHandler import DataHandler
 
 simulation_parameters = {
-    "iterations": 100,
+    "iterations": 20,
     "N": 10_000_000,  # Number of generated pulses
     "mu": 0.55,  # Signal intensity
     "decoy_intensities": [0.10, 0.0],  # Decoy intensities
-    "state_probs": [0.90, 0.08, 0.02],  # State probability
+    "state_probs": [0.75, 0.15, 0.1],  # State probabilities
     "channel_properties": {
         "beta": 0.2,  # Loss coefficient (dB/Km)
     },
     "detector_properties": {
-        "receiver_transmit": 0.013,  # Receiver transmittance
+        "receiver_transmit": 0.045,  # Receiver transmittance
         "detector_efficiency": 0.2,  # Detector Efficiency
         "detector_error": 0.03,  # Probability of a pulse measured in the correct basis to trigger the wrong detector
-        "dark_count_rate": 4e-9,  # Probability of dark counts
+        "dark_count_rate": 1.7e-6,  # Probability of dark counts
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "attack_properties": {
-        "execute_attack": True,  # Bool value to determine if the attack is performed
+        "execute_attack": False,  # Bool value to determine if the attack is performed
         "attack_type": "BS",  # Type of attack. "PNS" or "BS".
         "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
@@ -29,22 +29,22 @@ simulation_parameters = {
 }
 
 distance_sweep_params = {
-    "run_sweep": False,
-    "n_sample": 60,
+    "run_sweep": True,
+    "n_sample": 5,
     "distance_control": {
         "d_min": 10,
-        "d_max": 140,
+        "d_max": 50,
         "alpha_dist": 1,  # Controls the concentration of distances sampled
     },
     "iteration_control": {
         "iter_min": simulation_parameters["iterations"],
         "iter_max": simulation_parameters["iterations"],
-        "alpha_iter": 0.4,  # Controls the concentration of iterations sampled
+        "alpha_iter": 1.0,  # Controls the concentration of iterations sampled
     },
 }
 
 yield_sweep_params = {
-    "run_yields": True,
+    "run_yields": False,
     "photon_nums": [1, 2, 3, 4, 5],
     "distance": 20,
 }

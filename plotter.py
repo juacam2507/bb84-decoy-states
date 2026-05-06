@@ -5,6 +5,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from dataHandler import DataHandler
 import os
+import re
 
 
 class Plotter:
@@ -13,11 +14,15 @@ class Plotter:
         self.fig_dir = "figures"
         os.makedirs(self.fig_dir, exist_ok=True)
 
-    def R_vs_D_plot(self, filename):
+    def R_vs_D_plot(self, filepath):
 
-        data_handler = DataHandler("key_rate_vs_distance")
+        data_handler = DataHandler(dir="key_rate_vs_distance")
 
-        filepath = os.path.join(data_handler.dirpath, filename)
+        outdir = os.path.join(self.fig_dir, data_handler.dir)
+        os.makedirs(outdir, exist_ok=True)
+        split = re.split(r"[/.]", filepath)
+
+        out_path = os.path.join(outdir, split[-2])
 
         df = data_handler.read_data(filepath=filepath)
 
@@ -57,8 +62,8 @@ class Plotter:
             theoretical,
             color="crimson",
             linewidth=2,
-            marker="o",
-            markersize=5,
+            # marker='o',
+            # markersize=0,
             label="Theoretical Key rate",
         )
 
@@ -84,8 +89,8 @@ class Plotter:
                 [0],
                 color="crimson",
                 linewidth=2,
-                marker="o",
-                markersize=5,
+                # marker="o",
+                # markersize=5,
                 label="Theoretical key rate",
             ),
         ]
@@ -93,13 +98,21 @@ class Plotter:
         ax.legend(handles=legend_elements, fontsize=10)
 
         plt.tight_layout()
+        plt.savefig(out_path, dpi=150, bbox_inches="tight")
         plt.show()
+        plt.close(fig=fig)
+        print(f"Figure saved to {out_path}...")
 
-    def yield_plot(self, filename):
+    def yield_plot(self, filepath):
 
-        data_handler = DataHandler("yield_assessment")
+        data_handler = DataHandler(dir="yield_assessment")
 
-        filepath = os.path.join(data_handler.dirpath, filename)
+        outdir = os.path.join(self.fig_dir, data_handler.dir)
+        os.makedirs(outdir, exist_ok=True)
+
+        split = re.split(r"[/.]", filepath)
+
+        out_path = os.path.join(outdir, split[-2])
 
         df = data_handler.read_data(filepath=filepath)
 
@@ -108,7 +121,7 @@ class Plotter:
         decoy_data = df.filter(like="Decoy Yield").to_numpy(dtype=float)
 
         n_iter = signal_data.shape[0]
-        n_photon_nums = len(photon_nums)
+        # n_photon_nums = len(photon_nums)
 
         box_data = []
         labels = []
@@ -145,4 +158,7 @@ class Plotter:
         ax.grid(True, which="both", linestyle="--", alpha=0.4)
 
         plt.tight_layout()
+        plt.savefig(out_path, dpi=150, bbox_inches="tight")
         plt.show()
+        plt.close(fig=fig)
+        print(f"Figure saved to {out_path}...")
