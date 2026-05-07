@@ -1,11 +1,9 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from dataHandler import DataHandler
 import os
-import re
 
 
 class Plotter:
@@ -24,7 +22,7 @@ class Plotter:
         basename = os.path.splitext(os.path.basename(filepath))[0]
         out_path = os.path.join(outdir, basename + ".png")
 
-        df = data_handler.read_data(filepath=filepath)
+        df , meta = data_handler.read_data(filepath=filepath)
 
         distances = df.iloc[:, 0].to_numpy(dtype=float)
         theoretical = df.iloc[:, -1].to_numpy(dtype=float)
@@ -106,7 +104,7 @@ class Plotter:
     def yield_plot(self, filepath):
 
         data_handler = DataHandler(dir="yield_assessment")
-        
+
         outdir = os.path.join(self.fig_dir, data_handler.dir)
         os.makedirs(outdir, exist_ok=True)
 
@@ -114,32 +112,39 @@ class Plotter:
 
         out_path = os.path.join(outdir, basename + ".png")
 
-        df = data_handler.read_data(filepath=filepath)
+        df, meta = data_handler.read_data(filepath=filepath)
+        
+        attack_type = meta["attack_properties"]["attack_type"]
+        execute_attack = meta["attack_properties"]["execute_attack"]
 
         photon_nums = df.iloc[:, 0].to_numpy(dtype=int)
         signal_data = df.filter(like="Signal Yield").to_numpy(dtype=float)
         decoy_data = df.filter(like="Decoy Yield").to_numpy(dtype=float)
+        theoretical_yields = df.filter(like="Theoretical yield").to_numpy(dtype=float)
 
-        n_iter = signal_data.shape[0]
-        # n_photon_nums = len(photon_nums)
+        n_iter = len(signal_data[0])
+
+        theoretical_data = np.tile(theoretical_yields, (1, n_iter))
+
+        n_photon_nums = len(photon_nums)
 
         box_data = []
         labels = []
 
-        for n in range(n_iter):
+        for n in range(n_photon_nums):
+            box_data.append(theoretical_data[n, :])
             box_data.append(signal_data[n, :])
             box_data.append(decoy_data[n, :])
 
-            labels.append(rf"$Y_{n+1}^\mu$")
-            labels.append(rf"$Y_{n+1}^\nu$")
-
-        # print(np.vstack(box_data))
+            labels.append(rf"$Y_{photon_nums[n]}$")
+            labels.append(rf"$Y_{photon_nums[n]}^\mu$")
+            labels.append(rf"$Y_{photon_nums[n]}^\nu$")
 
         fig, ax = plt.subplots(figsize=(14, 6))
 
         ax.boxplot(
             box_data,
-            positions=range(1, 1 + 2 * n_iter),
+            positions=range(1, 1 + 3 * n_photon_nums),
             patch_artist=True,
             boxprops=dict(facecolor="steelblue", alpha=0.55),
             medianprops=dict(color="navy", linewidth=2),
@@ -148,11 +153,14 @@ class Plotter:
             ),
         )
 
-        # ax.set_yscale("log")
-        ax.set_title(f"")
+        if execute_attack:
+            ax.set_title(f"n-photon yields, Attack = {attack_type}", fontsize = 18)
+        else:
+            ax.set_title(f"n-photon yields, Attack = None", fontsize = 18)
+            
         ax.tick_params(axis="both", labelsize=14)
 
-        ax.set_xticks(range(1, 1 + 2 * n_iter))
+        ax.set_xticks(range(1, 1 + 3 * n_photon_nums))
         ax.set_xticklabels(labels=labels)
         ax.set_xlabel(rf"Photon number and type", fontsize=16)
 

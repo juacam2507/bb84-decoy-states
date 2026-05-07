@@ -426,25 +426,31 @@ class SecurityAnalysis:
 
         yields_mu = []
         yields_nu = []
+        yields_teo = []
         eta_mu, eta_nu = self.compute_state_eta(state_gains=state_gains)
 
         for num in photon_nums:
             Y_n_mu = self.y_0 + 1 - (1 - eta_mu) ** num
             Y_n_nu = self.y_0 + 1 - (1 - eta_nu) ** num
+            Y_n = self.y_0 + 1 - (1 - self.eta) ** num
 
             yields_mu.append(Y_n_mu)
             yields_nu.append(Y_n_nu)
+            yields_teo.append(Y_n)
 
             if self.debug:
                 print(f"[DEBUG] Yield of {num} signal photons:\n {Y_n_mu}")
                 print(f"[DEBUG] Yield of {num} decoy photons:\n {Y_n_nu}")
+                print(f"[DEBUG] Theoretical Yield of {num} photons:\n {Y_n}")
                 print(
                     "----------------------------------------------------------------"
                 )
 
         if self.debug:
+            print(f"[DEBUG] Choosen set of photon numbers: {photon_nums}")
             print(f"[DEBUG] Yields of signal photons: {yields_mu}")
             print(f"[DEBUG] Yield of decoy photons: {yields_nu}")
+            print(f"[DEBUG] Theoretical yields: {yields_teo}")
             print("----------------------------------------------------------------")
 
-        return yields_mu, yields_nu
+        return yields_mu, yields_nu, yields_teo

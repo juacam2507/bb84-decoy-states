@@ -34,15 +34,18 @@ class YieldAnalysis:
 
         state_gains, _ = simulator.run(iterations=self.iterations)
 
-        yields_mu, yields_nu = security_analysis.compute_state_yields(
+        yields_mu, yields_nu, yields_teo = security_analysis.compute_state_yields(
             photon_nums=self.photon_nums, state_gains=state_gains
         )
 
         signal_data = np.vstack(yields_mu)
         decoy_data = np.vstack(yields_nu)
+        theoretical_yield = np.vstack(yields_teo)
+         
         if self.debug:
             print(f"[DEBUG] Signal data: {signal_data}")
             print(f"[DEBUG] Decoy data: {decoy_data}")
+            print(f"[DEBUG] Theoretical data: {theoretical_yield}")
             print("----------------------------------------------------------------")
 
-        return yields_mu, yields_nu
+        return yields_mu, yields_nu, theoretical_yield

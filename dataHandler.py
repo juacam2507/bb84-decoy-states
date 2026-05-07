@@ -78,6 +78,17 @@ class DataHandler:
 
     def read_data(self, filepath):
 
+        meta_lines = []
+
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("#---"):
+                    break
+                if line.startswith("#"):
+                    meta_lines.append(line[1:].strip())
+
+        meta = json.loads("\n".join(meta_lines))
+
         df = pd.read_csv(filepath, comment="#")
 
-        return df
+        return df, meta
