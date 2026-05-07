@@ -4,7 +4,7 @@ from yieldAnalysis import YieldAnalysis
 from dataHandler import DataHandler
 
 simulation_parameters = {
-    "iterations": 50,
+    "iterations": 100,
     "N": 100_000_000,  # Number of generated pulses
     "mu": 0.48,  # Signal intensity
     "decoy_intensities": [0.05, 0.0],  # Decoy intensities
@@ -20,12 +20,12 @@ simulation_parameters = {
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "attack_properties": {
-        "execute_attack": False,  # Bool value to determine if the attack is performed
+        "execute_attack": True,  # Bool value to determine if the attack is performed
         "attack_type": "BS",  # Type of attack. "PNS" or "BS".
         "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
     "error_correction_efficiency": 1.22,
-    "debug": True,
+    "debug": False,
 }
 
 distance_sweep_params = {
@@ -105,7 +105,9 @@ if yield_sweep_switch:
         signal_columns.append(f"Signal Yield {i + 1}")
         decoy_columns.append(f"Decoy Yield {i + 1}")
 
-    yield_data_header = [first_column] + [second_column] + signal_columns + decoy_columns
+    yield_data_header = (
+        [first_column] + [second_column] + signal_columns + decoy_columns
+    )
 
     yield_data_handler.write_data(
         yield_analysis.photon_nums,
