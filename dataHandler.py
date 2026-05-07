@@ -82,12 +82,19 @@ class DataHandler:
 
         with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
-                if line.startswith("#---"):
+                stripped = line.strip()
+                if stripped.startswith("#---"):
                     break
                 if line.startswith("#"):
-                    meta_lines.append(line[1:].strip())
+                    meta_lines.append(stripped[1:].strip())
 
-        meta = json.loads("\n".join(meta_lines))
+        meta = None
+
+        try:
+            meta = json.loads("\n".join(meta_lines))
+
+        except json.JSONDecodeError:
+            print("[WARNING] Could not parse metadata - old file format detected.")
 
         df = pd.read_csv(filepath, comment="#")
 
