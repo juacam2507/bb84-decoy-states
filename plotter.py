@@ -20,9 +20,9 @@ class Plotter:
 
         outdir = os.path.join(self.fig_dir, data_handler.dir)
         os.makedirs(outdir, exist_ok=True)
-        split = re.split(r"[/.]", filepath)
 
-        out_path = os.path.join(outdir, split[-2])
+        basename = os.path.splitext(os.path.basename(filepath))[0]
+        out_path = os.path.join(outdir, basename + ".png")
 
         df = data_handler.read_data(filepath=filepath)
 
@@ -106,13 +106,13 @@ class Plotter:
     def yield_plot(self, filepath):
 
         data_handler = DataHandler(dir="yield_assessment")
-
+        
         outdir = os.path.join(self.fig_dir, data_handler.dir)
         os.makedirs(outdir, exist_ok=True)
 
-        split = re.split(r"[/.]", filepath)
+        basename = os.path.splitext(os.path.basename(filepath))[0]
 
-        out_path = os.path.join(outdir, split[-2])
+        out_path = os.path.join(outdir, basename + ".png")
 
         df = data_handler.read_data(filepath=filepath)
 
@@ -133,7 +133,7 @@ class Plotter:
             labels.append(rf"$Y_{n+1}^\mu$")
             labels.append(rf"$Y_{n+1}^\nu$")
 
-        print(np.vstack(box_data))
+        # print(np.vstack(box_data))
 
         fig, ax = plt.subplots(figsize=(14, 6))
 
@@ -149,12 +149,14 @@ class Plotter:
         )
 
         # ax.set_yscale("log")
+        ax.set_title(f"")
+        ax.tick_params(axis="both", labelsize=14)
 
         ax.set_xticks(range(1, 1 + 2 * n_iter))
-        ax.set_xticklabels(labels=labels, fontsize=14)
-        ax.set_xlabel(r"Photon number and type", fontsize=16)
+        ax.set_xticklabels(labels=labels)
+        ax.set_xlabel(rf"Photon number and type", fontsize=16)
 
-        ax.set_ylabel("Yield $Y$", fontsize=16)
+        ax.set_ylabel("Yield", fontsize=16)
         ax.grid(True, which="both", linestyle="--", alpha=0.4)
 
         plt.tight_layout()

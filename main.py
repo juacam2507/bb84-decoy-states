@@ -5,31 +5,31 @@ from dataHandler import DataHandler
 
 simulation_parameters = {
     "iterations": 20,
-    "N": 10_000_000,  # Number of generated pulses
-    "mu": 0.55,  # Signal intensity
-    "decoy_intensities": [0.10, 0.0],  # Decoy intensities
-    "state_probs": [0.75, 0.15, 0.1],  # State probabilities
+    "N": 1_000_000,  # Number of generated pulses
+    "mu": 0.48,  # Signal intensity
+    "decoy_intensities": [0.05, 0.0],  # Decoy intensities
+    "state_probs": [0.75, 0.15, 0.10],  # State probabilities
     "channel_properties": {
-        "beta": 0.2,  # Loss coefficient (dB/Km)
+        "beta": 0.21,  # Loss coefficient (dB/Km)
     },
     "detector_properties": {
-        "receiver_transmit": 0.045,  # Receiver transmittance
-        "detector_efficiency": 0.2,  # Detector Efficiency
-        "detector_error": 0.03,  # Probability of a pulse measured in the correct basis to trigger the wrong detector
+        "receiver_transmit": 0.225,  # Receiver transmittance
+        "detector_efficiency": 0.20,  # Detector Efficiency
+        "detector_error": 0.033,  # Probability of a pulse measured in the correct basis to trigger the wrong detector
         "dark_count_rate": 1.7e-6,  # Probability of dark counts
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "attack_properties": {
-        "execute_attack": False,  # Bool value to determine if the attack is performed
+        "execute_attack": True,  # Bool value to determine if the attack is performed
         "attack_type": "BS",  # Type of attack. "PNS" or "BS".
         "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
-    "error_correction_efficiency": 1.2,
+    "error_correction_efficiency": 1.22,
     "debug": True,
 }
 
 distance_sweep_params = {
-    "run_sweep": True,
+    "run_sweep": False,
     "n_sample": 5,
     "distance_control": {
         "d_min": 10,
@@ -44,7 +44,7 @@ distance_sweep_params = {
 }
 
 yield_sweep_params = {
-    "run_yields": False,
+    "run_yields": True,
     "photon_nums": [1, 2, 3, 4, 5],
     "distance": 20,
 }

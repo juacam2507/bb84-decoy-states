@@ -65,17 +65,19 @@ class DataHandler:
             for line in meta_json.splitlines():
                 f.write(f"#{line}\n")
             f.write("#---\n")
+            if header_str:
+                f.write(f"{header_str}\n")
 
-        np.savetxt(
-            filepath,
-            data,
-            delimiter=separator,
-            header=header_str,
-            fmt="%.10g",
-        )
+            np.savetxt(
+                f,
+                data,
+                delimiter=separator,
+                header="",
+                fmt="%.10g",
+            )
 
     def read_data(self, filepath):
 
-        df = pd.read_csv(filepath)
+        df = pd.read_csv(filepath, comment="#")
 
         return df
