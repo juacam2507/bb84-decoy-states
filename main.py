@@ -5,10 +5,10 @@ from dataHandler import DataHandler
 
 simulation_parameters = {
     "iterations": 100,
-    "N": 100_000_000,  # Number of generated pulses
+    "N": 1_000_000_000,  # Number of generated pulses
     "mu": 0.48,  # Signal intensity
     "decoy_intensities": [0.05, 0.0],  # Decoy intensities
-    "state_probs": [0.75, 0.15, 0.10],  # State probabilities
+    "state_probs": [0.7, 0.25, 0.05],  # State probabilities
     "channel_properties": {
         "beta": 0.21,  # Loss coefficient (dB/Km)
     },
@@ -20,21 +20,21 @@ simulation_parameters = {
         "dark_count_error": 0.5,  # Probability of dark counts triggering the wrong detector
     },
     "attack_properties": {
-        "execute_attack": True,  # Bool value to determine if the attack is performed
+        "execute_attack": False,  # Bool value to determine if the attack is performed
         "attack_type": "BS",  # Type of attack. "PNS" or "BS".
         "efficiency_loss": 0.9,  # Efficiency loss for the BS attack
     },
     "error_correction_efficiency": 1.22,
-    "debug": False,
+    "debug": True,
 }
 
 distance_sweep_params = {
-    "run_sweep": False,
-    "n_sample": 5,
+    "run_sweep": True,
+    "n_sample": 8,
     "distance_control": {
         "d_min": 10,
-        "d_max": 50,
-        "alpha_dist": 1,  # Controls the concentration of distances sampled
+        "d_max": 80,
+        "alpha_dist": 1.0,  # Controls the concentration of distances sampled
     },
     "iteration_control": {
         "iter_min": simulation_parameters["iterations"],
@@ -44,7 +44,7 @@ distance_sweep_params = {
 }
 
 yield_sweep_params = {
-    "run_yields": True,
+    "run_yields": False,
     "photon_nums": [1, 2, 3],
     "distance": 20,
 }
