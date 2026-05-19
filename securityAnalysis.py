@@ -24,6 +24,7 @@ class SecurityAnalysis:
         ]
 
         self.eta = quantum_channel.eta
+        self.original_eta = quantum_channel.original_eta
 
     def compute_theoretical_gains(self) -> np.ndarray:
         """
@@ -432,7 +433,7 @@ class SecurityAnalysis:
         for num in photon_nums:
             Y_n_mu = self.y_0 + 1 - (1 - eta_mu) ** num
             Y_n_nu = self.y_0 + 1 - (1 - eta_nu) ** num
-            Y_n = self.y_0 + 1 - (1 - self.eta) ** num
+            Y_n = self.y_0 + 1 - (1 - self.original_eta) ** num
 
             yields_mu.append(Y_n_mu)
             yields_nu.append(Y_n_nu)

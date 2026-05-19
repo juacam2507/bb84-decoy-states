@@ -17,6 +17,7 @@ class QuantumChannel:
         self.alice = Emitter(simulation_parameters=simulation_parameters, rng=rng)
         self.bob = Receiver(simulation_parameters=simulation_parameters, rng=rng)
         self.eta = self.channel_efficiency(l)
+        self.original_eta = self.eta
         
         self.execute_attack = simulation_parameters["attack_properties"]["execute_attack"]
         self.attack_type = simulation_parameters["attack_properties"]["attack_type"]
@@ -24,7 +25,8 @@ class QuantumChannel:
         if self.execute_attack:
             self.eve = Attacker(simulation_parameters=simulation_parameters)
             
-            if self.attack_type == "BS": 
+            if self.attack_type == "BS":
+                 
                 self.eta = self.eve.bs_attack(self.eta)
         
             

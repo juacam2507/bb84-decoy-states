@@ -22,7 +22,8 @@ class Plotter:
         basename = os.path.splitext(os.path.basename(filepath))[0]
         out_path = os.path.join(outdir, basename + ".png")
 
-        df , meta = data_handler.read_data(filepath=filepath)
+        df, meta = data_handler.read_data(filepath=filepath)
+        print(df)
 
         distances = df.iloc[:, 0].to_numpy(dtype=float)
         theoretical = df.iloc[:, -1].to_numpy(dtype=float)
@@ -54,7 +55,7 @@ class Plotter:
                 alpha=0.6,
             ),
         )
-
+        print(distances)
         ax.plot(
             distances,
             theoretical,
@@ -66,21 +67,23 @@ class Plotter:
         )
 
         ax.set_yscale("log")
-        ax.set_xlabel("Distance (Km)", fontsize=12)
-        ax.set_ylabel("Key Rate (bits/pulse)", fontsize=12)
+        ax.set_xlabel("Distance (Km)", fontsize=18)
+        ax.set_ylabel("Key Rate (bits/pulse)", fontsize=18)
         ax.set_title(
-            f"Experimental key rates ({n_exp} runs) vs Theoretical Key Rate",
-            fontsize=13,
+            f"Numerical key rates ({n_exp} runs) vs Theoretical Key Rate",
+            fontsize=20,
         )
         ax.set_xticks(distances)
         ax.set_xticklabels([f"{d:.1f}" for d in distances], rotation=30, ha="center")
         ax.grid(True, which="both", linestyle="--", alpha=0.4)
+        ax.set_ylim(5e-6, 2e-3)
+        ax.tick_params(axis="both", labelsize=16)
 
         legend_elements = [
             Patch(
                 facecolor="steelblue",
                 alpha=0.55,
-                label=f"Experimental key rates ({n_exp} runs/distance)",
+                label=f"Numerical key rates ({n_exp} runs/distance)",
             ),
             Line2D(
                 [0],
@@ -93,10 +96,10 @@ class Plotter:
             ),
         ]
 
-        ax.legend(handles=legend_elements, fontsize=10)
+        ax.legend(handles=legend_elements, fontsize=14)
 
         plt.tight_layout()
-        plt.savefig(out_path, dpi=150, bbox_inches="tight")
+        plt.savefig(out_path, dpi=300, bbox_inches="tight")
         plt.show()
         plt.close(fig=fig)
         print(f"Figure saved to {out_path}...")
@@ -113,9 +116,10 @@ class Plotter:
         out_path = os.path.join(outdir, basename + ".png")
 
         df, meta = data_handler.read_data(filepath=filepath)
-        
-        attack_type = meta["attack_properties"]["attack_type"]
-        execute_attack = meta["attack_properties"]["execute_attack"]
+
+        if meta:
+            attack_type = meta["attack_properties"]["attack_type"]
+            execute_attack = meta["attack_properties"]["execute_attack"]
 
         photon_nums = df.iloc[:, 0].to_numpy(dtype=int)
         signal_data = df.filter(like="Signal Yield").to_numpy(dtype=float)
@@ -140,7 +144,7 @@ class Plotter:
             labels.append(rf"$Y_{photon_nums[n]}^\mu$")
             labels.append(rf"$Y_{photon_nums[n]}^\nu$")
 
-        fig, ax = plt.subplots(figsize=(14, 6))
+        fig, ax = plt.subplots(figsize=(14, 4))
 
         ax.boxplot(
             box_data,
@@ -153,22 +157,23 @@ class Plotter:
             ),
         )
 
-        if execute_attack:
-            ax.set_title(f"n-photon yields, Attack = {attack_type}", fontsize = 18)
-        else:
-            ax.set_title(f"n-photon yields, Attack = None", fontsize = 18)
-            
-        ax.tick_params(axis="both", labelsize=14)
+        if meta:
+            if execute_attack:
+                ax.set_title(f"n-photon yields, Attack = {attack_type}", fontsize=20)
+            else:
+                ax.set_title(f"n-photon yields, Attack = None", fontsize=20)
+
+        ax.tick_params(axis="both", labelsize=16)
 
         ax.set_xticks(range(1, 1 + 3 * n_photon_nums))
         ax.set_xticklabels(labels=labels)
-        ax.set_xlabel(rf"Photon number and type", fontsize=16)
+        ax.set_xlabel(rf"Photon number and type", fontsize=18)
 
-        ax.set_ylabel("Yield", fontsize=16)
+        ax.set_ylabel("Yield", fontsize=18)
         ax.grid(True, which="both", linestyle="--", alpha=0.4)
 
         plt.tight_layout()
-        plt.savefig(out_path, dpi=150, bbox_inches="tight")
+        plt.savefig(out_path, dpi=300, bbox_inches="tight")
         plt.show()
         plt.close(fig=fig)
         print(f"Figure saved to {out_path}...")

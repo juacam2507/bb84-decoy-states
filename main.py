@@ -5,10 +5,10 @@ from dataHandler import DataHandler
 
 simulation_parameters = {
     "iterations": 100,
-    "N": 1_000_000_000,  # Number of generated pulses
-    "mu": 0.48,  # Signal intensity
-    "decoy_intensities": [0.05, 0.0],  # Decoy intensities
-    "state_probs": [0.7, 0.25, 0.05],  # State probabilities
+    "N": 100_000_000,  # Number of generated pulses
+    "mu": 0.479,  # Signal intensity
+    "decoy_intensities": [0.127, 0.0],  # Decoy intensities
+    "state_probs": [0.66, 0.29, 0.05],  # State probabilities
     "channel_properties": {
         "beta": 0.21,  # Loss coefficient (dB/Km)
     },
@@ -30,10 +30,10 @@ simulation_parameters = {
 
 distance_sweep_params = {
     "run_sweep": True,
-    "n_sample": 8,
+    "n_sample": 1,
     "distance_control": {
-        "d_min": 10,
-        "d_max": 80,
+        "d_min": 103.62,
+        "d_max": 103.62,
         "alpha_dist": 1.0,  # Controls the concentration of distances sampled
     },
     "iteration_control": {
