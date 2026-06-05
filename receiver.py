@@ -30,6 +30,7 @@ class Receiver:
         """
 
         self.N = simulation_parameters["N"]
+        self.z_basis_prob = simulation_parameters["rec_z_prob"]
         self.rng = rng
         self.debug = simulation_parameters["debug"]
 
@@ -50,7 +51,7 @@ class Receiver:
         For each pulse, computes probabilities of four mutually exclusive events:
         - Column 0: No detection on either detector
         - Column 1: Correct detector click only
-        - Column 2: Wrong detector click only  
+        - Column 2: Wrong detector click only
         - Column 3: Both detectors click
 
         Parameters
@@ -85,7 +86,7 @@ class Receiver:
 
         detection_probs = np.column_stack([p_none, p_corr, p_errn, p_both])
 
-         # Normalize each row to sum exactly to 1.0
+        # Normalize each row to sum exactly to 1.0
         row_sums = detection_probs.sum(axis=1, keepdims=True)
         detection_probs /= np.maximum(row_sums, 1e-15)  # Avoid div-by-zero
 
@@ -133,7 +134,6 @@ class Receiver:
             print(f"[DEBUG] Random detection choice vector: {aux}")
             print(f"[DEBUG] Choosen detection event: {detection_event}")
             print("----------------------------------------------------------------")
-            
 
         return detection_event
 
@@ -182,7 +182,7 @@ class Receiver:
         if self.debug:
             print(f"[DEBUG] Receptor bit array after detection: {receptor_bits}")
             print("----------------------------------------------------------------")
-            
+
         return receptor_bits
 
     def generate_basis_seq(self) -> np.ndarray:
@@ -197,10 +197,12 @@ class Receiver:
         npt.NDArray[np.int_]
             Basis choices, shape (N,) with values in {0,1}.
         """
-        basis_seq = self.rng.integers(0, 2, size=self.N)
+        rec_basis = self.rng.choice(
+            [0, 1], size=self.N, p=[self.z_basis_prob, 1 - self.z_basis_prob]
+        )
 
         if self.debug:
-            print(f"[DEBUG] Receptor basis choice: {basis_seq}")
+            print(f"[DEBUG] Receptor basis choice: {rec_basis}")
             print("----------------------------------------------------------------")
 
-        return basis_seq
+        return rec_basis

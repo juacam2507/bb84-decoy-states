@@ -8,6 +8,9 @@ class SecurityAnalysis:
         self.simulation_parameters = quantum_channel.simulation_parameters
         self.debug = self.simulation_parameters["debug"]
 
+        self.emit_z_prob = self.simulation_parameters["emit_z_prob"]
+        self.rec_z_prob = self.simulation_parameters["rec_z_prob"]
+
         self.signal_intensity = self.simulation_parameters["mu"]
         self.decoy_intensities = self.simulation_parameters["decoy_intensities"]
         self.intensities = np.array(
@@ -293,12 +296,22 @@ class SecurityAnalysis:
         )
 
         Q_single = y_1_l * mu * np.exp(-mu)
+        coincidence_rate = (self.emit_z_prob * self.rec_z_prob) + (
+            (1 - self.emit_z_prob) * (1 - self.rec_z_prob)
+        )
 
-        key_rates = 0.5 * (
+        key_rates = coincidence_rate * (
             -Q_s * self.error_correction_efficiency * self.shannon_entropy(E_s)
             + Q_single * (1 - self.shannon_entropy(e_1_u))
         )
         if self.debug:
+            print(
+                f"[DEBUG] Z basis coincidence rate: {self.emit_z_prob * self.rec_z_prob}"
+            )
+            print(
+                f"[DEBUG] X basis coincidence rate: {(1- self.emit_z_prob) *(1 - self.rec_z_prob)}"
+            )
+            print(f"[DEBUG] Coincidence rate: {coincidence_rate}")
             print(f"[DEBUG] Computed Secure Key Rate: {key_rates}")
             print(f"[DEBUG] Final Secure Key Rate: {np.clip(key_rates, 0.0 , 1.0)}")
             print("----------------------------------------------------------------")

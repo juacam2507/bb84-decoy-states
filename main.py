@@ -4,11 +4,13 @@ from yieldAnalysis import YieldAnalysis
 from dataHandler import DataHandler
 
 simulation_parameters = {
-    "iterations": 100,
-    "N": 100_000_000,  # Number of generated pulses
-    "mu": 0.479,  # Signal intensity
-    "decoy_intensities": [0.127, 0.0],  # Decoy intensities
-    "state_probs": [0.66, 0.29, 0.05],  # State probabilities
+    "iterations": 20,
+    "N": 1_000_000,  # Number of generated pulses
+    "mu": 0.5,  # Signal intensity
+    "decoy_intensities": [0.025, 0.0],  # Decoy intensities
+    "state_probs": [0.9, 0.09, 0.01],  # State probabilities
+    "emit_z_prob": 0.5,
+    "rec_z_prob": 0.5,
     "channel_properties": {
         "beta": 0.21,  # Loss coefficient (dB/Km)
     },
@@ -32,8 +34,8 @@ distance_sweep_params = {
     "run_sweep": True,
     "n_sample": 1,
     "distance_control": {
-        "d_min": 103.62,
-        "d_max": 103.62,
+        "d_min": 20,
+        "d_max": 20,
         "alpha_dist": 1.0,  # Controls the concentration of distances sampled
     },
     "iteration_control": {

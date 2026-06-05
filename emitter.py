@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Emitter:
     def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
         """
@@ -26,6 +27,7 @@ class Emitter:
         self.mu = simulation_parameters["mu"]
         self.decoy_intensities = simulation_parameters["decoy_intensities"]
         self.state_probs = simulation_parameters["state_probs"]
+        self.z_basis_prob = simulation_parameters["emit_z_prob"]
         self.debug = simulation_parameters["debug"]
         self.rng = rng
 
@@ -63,8 +65,9 @@ class Emitter:
             Array of shape (N,) containing the basis choice for each bit
             (0 = rectilinear, 1 = diagonal).
         """
-
-        source_basis = self.rng.integers(0, 2, self.N)
+        source_basis = self.rng.choice(
+            [0, 1], size=self.N, p=[self.z_basis_prob, 1 - self.z_basis_prob]
+        )
 
         if self.debug:
             print(f"[DEBUG] Source basis: {source_basis}")
@@ -87,7 +90,9 @@ class Emitter:
             (0 = signal, 1... = decoy states).
         """
         if not np.isclose(np.sum(self.state_probs), 1.0, atol=1e-10):
-            raise ValueError(f"state probabilities should sum to ~ 1. Actual: {sum(np.array(self.state_probs)):.15g}")
+            raise ValueError(
+                f"state probabilities should sum to ~ 1. Actual: {sum(np.array(self.state_probs)):.15g}"
+            )
 
         decoy_num = int(len(self.decoy_intensities))
 
@@ -123,7 +128,7 @@ class Emitter:
         Returns
         -------
         np.ndarray
-            Photon number sequence of shape (N,) giving the number of photons 
+            Photon number sequence of shape (N,) giving the number of photons
             generated in each pulse.
         """
 

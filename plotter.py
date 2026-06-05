@@ -23,7 +23,6 @@ class Plotter:
         out_path = os.path.join(outdir, basename + ".png")
 
         df, meta = data_handler.read_data(filepath=filepath)
-        print(df)
 
         distances = df.iloc[:, 0].to_numpy(dtype=float)
         theoretical = df.iloc[:, -1].to_numpy(dtype=float)
@@ -36,7 +35,7 @@ class Plotter:
         display_floor = 1e-10
         plot_data = [np.where(row == 0, display_floor, row) for row in box_data]
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(8, 6))
 
         bp = ax.boxplot(
             plot_data,
@@ -55,7 +54,7 @@ class Plotter:
                 alpha=0.6,
             ),
         )
-        print(distances)
+
         ax.plot(
             distances,
             theoretical,
@@ -67,17 +66,17 @@ class Plotter:
         )
 
         ax.set_yscale("log")
-        ax.set_xlabel("Distance (Km)", fontsize=18)
-        ax.set_ylabel("Key Rate (bits/pulse)", fontsize=18)
+        ax.set_xlabel("Distance (Km)", fontsize=16)
+        ax.set_ylabel("Key Rate (bits/pulse)", fontsize=16)
         ax.set_title(
             f"Numerical key rates ({n_exp} runs) vs Theoretical Key Rate",
-            fontsize=20,
+            fontsize=18,
         )
         ax.set_xticks(distances)
         ax.set_xticklabels([f"{d:.1f}" for d in distances], rotation=30, ha="center")
         ax.grid(True, which="both", linestyle="--", alpha=0.4)
         ax.set_ylim(5e-6, 2e-3)
-        ax.tick_params(axis="both", labelsize=16)
+        ax.tick_params(axis="both", labelsize=14)
 
         legend_elements = [
             Patch(
@@ -117,10 +116,6 @@ class Plotter:
 
         df, meta = data_handler.read_data(filepath=filepath)
 
-        if meta:
-            attack_type = meta["attack_properties"]["attack_type"]
-            execute_attack = meta["attack_properties"]["execute_attack"]
-
         photon_nums = df.iloc[:, 0].to_numpy(dtype=int)
         signal_data = df.filter(like="Signal Yield").to_numpy(dtype=float)
         decoy_data = df.filter(like="Decoy Yield").to_numpy(dtype=float)
@@ -158,6 +153,8 @@ class Plotter:
         )
 
         if meta:
+            attack_type = meta["attack_properties"]["attack_type"]
+            execute_attack = meta["attack_properties"]["execute_attack"]
             if execute_attack:
                 ax.set_title(f"n-photon yields, Attack = {attack_type}", fontsize=20)
             else:
