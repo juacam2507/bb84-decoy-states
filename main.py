@@ -4,7 +4,8 @@ from yieldAnalysis import YieldAnalysis
 from dataHandler import DataHandler
 
 simulation_parameters = {
-    "iterations": 20,
+    "protocol": "decoy-bb48",  # Type of protocol. Choose from "standard-bb84", "decoy-bb84", "rfi-bb84"
+    "iterations": 10,
     "N": 1_000_000,  # Number of generated pulses
     "mu": 0.5,  # Signal intensity
     "decoy_intensities": [0.025, 0.0],  # Decoy intensities
@@ -13,6 +14,7 @@ simulation_parameters = {
     "rec_z_prob": 0.5,
     "channel_properties": {
         "beta": 0.21,  # Loss coefficient (dB/Km)
+        "lenght": 10,  # Lenght of the channel (Km)
     },
     "detector_properties": {
         "receiver_transmit": 0.225,  # Receiver transmittance
@@ -32,10 +34,10 @@ simulation_parameters = {
 
 distance_sweep_params = {
     "run_sweep": True,
-    "n_sample": 1,
+    "n_sample": 10,
     "distance_control": {
         "d_min": 20,
-        "d_max": 20,
+        "d_max": 30,
         "alpha_dist": 1.0,  # Controls the concentration of distances sampled
     },
     "iteration_control": {

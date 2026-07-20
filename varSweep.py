@@ -13,31 +13,32 @@ class DistanceSweep:
     def __init__(
         self,
         simulation_parameters: dict,
-        distance_sweep_params: dict,
+        sweep_params: dict,
         rng: np.random.Generator,
     ):
         self.rng = rng
         self.simulation_parameters = simulation_parameters
         self.debug = simulation_parameters["debug"]
 
-        self.n_sample = distance_sweep_params["n_sample"]
+        self.var_name = sweep_params["var_name"]
+        self.n_sample = sweep_params["n_sample"]
 
-        self.d_min = distance_sweep_params["distance_control"]["d_min"]
-        self.d_max = distance_sweep_params["distance_control"]["d_max"]
-        self.alpha_dist = distance_sweep_params["distance_control"]["alpha_dist"]
-        self.iter_min = distance_sweep_params["iteration_control"]["iter_min"]
-        self.iter_max = distance_sweep_params["iteration_control"]["iter_max"]
-        self.alpha_iter = distance_sweep_params["iteration_control"]["alpha_iter"]
+        self.var_min = sweep_params["var_control"]["var_min"]
+        self.var_max = sweep_params["var_control"]["var_max"]
+        self.alpha_var = sweep_params["var_control"]["alpha_var"]
+        self.iter_min = sweep_params["iteration_control"]["iter_min"]
+        self.iter_max = sweep_params["iteration_control"]["iter_max"]
+        self.alpha_iter = sweep_params["iteration_control"]["alpha_iter"]
 
         self.iterations = self.generate_array(
             min=self.iter_min, max=self.iter_max, alpha=self.alpha_iter, type=int
         )
-        self.distances = self.generate_array(
-            min=self.d_min, max=self.d_max, alpha=self.alpha_dist, type=float
+        self.values = self.generate_array(
+            min=self.var_min, max=self.var_max, alpha=self.alpha_var, type=float
         )
 
         if self.debug:
-            print(f"[DEBUG] Distances: {self.distances}")
+            print(f"[DEBUG] Distances: {self.values}")
             print(f"[DEBUG] Iterations: {self.iterations}")
 
     def generate_array(
@@ -56,8 +57,8 @@ class DistanceSweep:
 
         i = 0
 
-        for d in tqdm(self.distances, desc="Distances"):
-            self.simulation_parameters["channel_properties"]["lenght"] = d
+        for val in tqdm(self.values, desc=self.var_name):
+            self.simulation_parameters[self.var_name] = val
             quantum_channel = QuantumChannel(self.simulation_parameters, self.rng)
             classical_channel = ClassicalChannel(self.simulation_parameters)
             simulator = Simulator(
@@ -86,8 +87,7 @@ class DistanceSweep:
 
         i = 0
 
-        for d in tqdm(self.distances, desc="Distances"):
-            self.simulation_parameters["channel_properties"]["lenght"] = d
+        for val in tqdm(self.values, desc=self.var_name):
             quantum_channel = QuantumChannel(self.simulation_parameters, self.rng)
             security_analysis = SecurityAnalysis(quantum_channel=quantum_channel)
 

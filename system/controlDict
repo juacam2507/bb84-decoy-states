@@ -1,0 +1,9 @@
+{
+    "iterations": 20,
+
+    "N": 1_000_000,  # Number of generated pulses
+
+    "error_correction_efficiency": 1.22,
+
+    "debug": True,
+}

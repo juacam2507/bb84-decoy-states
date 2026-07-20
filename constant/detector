@@ -1,0 +1,11 @@
+{
+    "receiver_transmit": 0.225,   # Receiver transmittance
+
+    "detector_efficiency": 0.20,  # Detector Efficiency
+    
+    "detector_error": 0.033,      # Probability of a pulse measured in the correct basis to trigger the wrong detector
+    
+    "dark_count_rate": 1.7e-6,    # Probability of dark counts
+    
+    "dark_count_error": 0.5,      # Probability of dark counts triggering the wrong detector
+}
