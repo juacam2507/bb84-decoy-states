@@ -1,4 +1,5 @@
 import numpy as np
+import array_statistics as st
 
 
 class Receiver:
@@ -30,7 +31,8 @@ class Receiver:
         """
 
         self.N = simulation_parameters["N"]
-        self.z_basis_prob = simulation_parameters["rec_z_prob"]
+        self.protocol = simulation_parameters["protocol"]
+        self.basis_probs = simulation_parameters["basis_probs"]
         self.rng = rng
         self.debug = simulation_parameters["debug"]
 
@@ -181,6 +183,8 @@ class Receiver:
 
         if self.debug:
             print(f"[DEBUG] Receptor bit array after detection: {receptor_bits}")
+            print(f"[DEBUG] Detection statistics:")
+            st.get_frequencies(receptor_bits, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return receptor_bits
@@ -197,12 +201,26 @@ class Receiver:
         npt.NDArray[np.int_]
             Basis choices, shape (N,) with values in {0,1}.
         """
-        rec_basis = self.rng.choice(
-            [0, 1], size=self.N, p=[self.z_basis_prob, 1 - self.z_basis_prob]
-        )
+        rec_basis = np.zeros(self.N, dtype=int)
+
+        z_basis_prob = self.basis_probs["rec_z_prob"]
+        x_basis_prob = self.basis_probs["rec_x_prob"]
+
+        if self.protocol == "rfi-bb84":
+            rec_basis = self.rng.choice(
+                [0, 1, 2],
+                size=self.N,
+                p=[z_basis_prob, x_basis_prob, 1 - z_basis_prob - x_basis_prob],
+            )
+        else:
+            rec_basis = self.rng.choice(
+                [0, 1], size=self.N, p=[z_basis_prob, 1 - z_basis_prob]
+            )
 
         if self.debug:
             print(f"[DEBUG] Receptor basis choice: {rec_basis}")
+            print(f"[DEBUG] Receptor basis statistics:")
+            st.get_frequencies(rec_basis, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return rec_basis

@@ -1,4 +1,6 @@
 import numpy as np
+import array_statistics as st
+
 
 class Attacker:
 
@@ -21,6 +23,8 @@ class Attacker:
             print(
                 f"[DEBUG] Modified photon number after PNS attack:{modified_photon_nums}"
             )
+            print(f"[DEBUG] Photon numbers statistics:")
+            st.get_frequencies(photon_nums, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return modified_photon_nums

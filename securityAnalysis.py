@@ -8,14 +8,17 @@ class SecurityAnalysis:
         self.simulation_parameters = quantum_channel.simulation_parameters
         self.debug = self.simulation_parameters["debug"]
 
-        self.emit_z_prob = self.simulation_parameters["emit_z_prob"]
-        self.rec_z_prob = self.simulation_parameters["rec_z_prob"]
-
+        self.protocol = self.simulation_parameters["protocol"]
+        self.basis_probs = self.simulation_parameters["basis_probs"]
         self.signal_intensity = self.simulation_parameters["mu"]
-        self.decoy_intensities = self.simulation_parameters["decoy_intensities"]
-        self.intensities = np.array(
-            [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
-        )
+
+        if self.protocol == "bb84":
+            self.intensities = np.array([self.signal_intensity])
+        else:
+            self.decoy_intensities = self.simulation_parameters["decoy_intensities"]
+            self.intensities = np.array(
+                [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
+            )
         self.state_num = len(self.intensities)
 
         self.y_0 = self.simulation_parameters["detector_properties"]["dark_count_rate"]
@@ -121,21 +124,27 @@ class SecurityAnalysis:
             Lower bound Y₀ᴸ ∈ [0, 1] (clipped).
         """
 
-        if len(self.decoy_intensities) != 2:
-            return np.zeros_like(state_gains[1])
+        if self.protocol == "bb84":
+            y_0_l = np.full_like(state_gains[0], self.y_0)
+        else:
 
-        nu_1, nu_2 = self.decoy_intensities
+            if len(self.decoy_intensities) != 2:
+                return np.zeros_like(state_gains[0])
 
-        Q_d1, Q_d2 = state_gains[1], state_gains[2]
+            nu_1, nu_2 = self.decoy_intensities
 
-        denom = nu_1 - nu_2
+            Q_d1, Q_d2 = state_gains[1], state_gains[2]
 
-        if denom <= 0:
-            print(f"[DEBUG] Final Y0_L: {0.0}")
-            print("----------------------------------------------------------------")
-            return np.zeros_like(state_gains[1])
+            denom = nu_1 - nu_2
 
-        y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / denom
+            if denom <= 0:
+                print(f"[DEBUG] Final Y0_L: {0.0}")
+                print(
+                    "----------------------------------------------------------------"
+                )
+                return np.zeros_like(state_gains[1])
+
+            y_0_l = (nu_1 * Q_d2 * np.exp(nu_2) - nu_2 * Q_d1 * np.exp(nu_1)) / denom
         if self.debug:
             print(f"[DEBUG] Computed Y0_L: {y_0_l}")
             print(f"[DEBUG] Final Y0_L: {np.clip(y_0_l, 0.0, 1.0)}")
@@ -163,26 +172,36 @@ class SecurityAnalysis:
         float
             Single-photon yield lower bound Y₁ᴸ ∈ [0, 1].
         """
-
-        if len(self.decoy_intensities) != 2:
-            return np.zeros_like(state_gains[0])
-
         mu = self.signal_intensity
-        nu_1, nu_2 = self.decoy_intensities
-        Q_s, Q_d1, Q_d2 = state_gains[0], state_gains[1], state_gains[2]
 
-        denom = (nu_1 - nu_2) * (mu - (nu_1 + nu_2))
+        if self.protocol == "bb84":
+            p_multi = 1 - ((1 + mu) * np.exp(-1.0 * mu))
+            Q_s = state_gains[0]
+            y_1_l = (Q_s - p_multi - y_0_l * np.exp(-mu)) / (mu * np.exp(-mu))
+            print(f"[DEBUG] p multi : {p_multi}")
+            print(f"[DEBUG] emu : {np.exp(mu)}")
+            print(f"[DEBUG] p multi * emu : {p_multi * np.exp(mu)}")
+            print(f"[DEBUG] Q_s * emu : {Q_s * np.exp(mu)}")
 
-        if denom <= 0:
-            y_1_l = np.zeros_like(state_gains[0])
-            print(f"[DEBUG] Final Y1_L: {y_1_l}")
-            return y_1_l
+        else:
+            if len(self.decoy_intensities) != 2:
+                return np.zeros_like(state_gains[0])
 
-        y_1_l = (mu / denom) * (
-            Q_d1 * np.exp(nu_1)
-            - Q_d2 * np.exp(nu_2)
-            - ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
-        )
+            nu_1, nu_2 = self.decoy_intensities
+            Q_s, Q_d1, Q_d2 = state_gains[0], state_gains[1], state_gains[2]
+
+            denom = (nu_1 - nu_2) * (mu - (nu_1 + nu_2))
+
+            if denom <= 0:
+                y_1_l = np.zeros_like(state_gains[0])
+                print(f"[DEBUG] Final Y1_L: {y_1_l}")
+                return y_1_l
+
+            y_1_l = (mu / denom) * (
+                Q_d1 * np.exp(nu_1)
+                - Q_d2 * np.exp(nu_2)
+                - ((nu_1**2 - nu_2**2) / mu**2) * (Q_s * np.exp(mu) - y_0_l)
+            )
         if self.debug:
             print(f"[DEBUG] Computed Y1_L: {y_1_l}")
             print(f"[DEBUG] Final Y1_L: {np.clip(y_1_l, 0.0, 1.0)}")
@@ -212,24 +231,32 @@ class SecurityAnalysis:
         float
             Single-photon phase error upper bound e₁ᵘ ∈ [0, 0.5].
         """
-        if len(self.decoy_intensities) != 2:
-            if self.debug:
-                print(f"[DEBUG] Final e1_u: {np.full_like(state_gains[0], 0.5)}")
-                print(
-                    "----------------------------------------------------------------"
-                )
-            return np.full_like(state_gains[0], 0.5)
 
-        nu_1, nu_2 = self.decoy_intensities
+        mu = self.signal_intensity
+        if self.protocol == "bb84":
+            Q_s = state_gains[0]
+            E_s = state_errors[0]
 
-        Q_d1, Q_d2 = state_gains[1], state_gains[2]
+            e_1_u = np.where(y_1_l > 0, E_s * Q_s / (y_1_l * np.exp(mu)), 0.5)
+        else:
+            if len(self.decoy_intensities) != 2:
+                if self.debug:
+                    print(f"[DEBUG] Final e1_u: {np.full_like(state_gains[0], 0.5)}")
+                    print(
+                        "----------------------------------------------------------------"
+                    )
+                return np.full_like(state_gains[0], 0.5)
 
-        E_d1, E_d2 = state_errors[1], state_errors[2]
+            nu_1, nu_2 = self.decoy_intensities
 
-        denom = (nu_1 - nu_2) * y_1_l
-        numer = E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)
+            Q_d1, Q_d2 = state_gains[1], state_gains[2]
 
-        e_1_u = np.where(denom > 0, numer / denom, 0.5)
+            E_d1, E_d2 = state_errors[1], state_errors[2]
+
+            denom = (nu_1 - nu_2) * y_1_l
+            numer = E_d1 * Q_d1 * np.exp(nu_1) - E_d2 * Q_d2 * np.exp(nu_2)
+
+            e_1_u = np.where(denom > 0, numer / denom, 0.5)
 
         if self.debug:
             print(f"[DEBUG] Computed e1_u: {e_1_u}")
@@ -296,22 +323,42 @@ class SecurityAnalysis:
         )
 
         Q_single = y_1_l * mu * np.exp(-mu)
-        coincidence_rate = (self.emit_z_prob * self.rec_z_prob) + (
-            (1 - self.emit_z_prob) * (1 - self.rec_z_prob)
-        )
+
+        emit_z_prob = self.basis_probs["emit_z_prob"]
+        emit_x_prob = self.basis_probs["emit_x_prob"]
+
+        rec_z_prob = self.basis_probs["rec_z_prob"]
+        rec_x_prob = self.basis_probs["rec_x_prob"]
+
+        if self.protocol == "rfi-bb84":
+            coincidence_rate = (
+                (emit_z_prob * rec_z_prob)
+                + (emit_x_prob * rec_x_prob)
+                + ((1 - emit_z_prob - emit_x_prob) * (1 - rec_z_prob - rec_x_prob))
+            )
+            if self.debug:
+                print(f"[DEBUG] Z basis coincidence rate: {emit_z_prob * rec_z_prob}")
+                print(f"[DEBUG] X basis coincidence rate: {emit_x_prob * rec_x_prob}")
+                print(
+                    f"[DEBUG] Y basis coincidence rate: {(1 - emit_z_prob - emit_x_prob) * (1 - rec_z_prob - rec_x_prob)}"
+                )
+                print(f"[DEBUG] Coincidence rate: {coincidence_rate}")
+        else:
+            coincidence_rate = (emit_z_prob * rec_z_prob) + (
+                (1 - emit_z_prob) * (1 - rec_z_prob)
+            )
+            if self.debug:
+                print(f"[DEBUG] Z basis coincidence rate: {emit_z_prob * rec_z_prob}")
+                print(
+                    f"[DEBUG] X basis coincidence rate: {(1- emit_z_prob) *(1 - rec_z_prob)}"
+                )
+                print(f"[DEBUG] Coincidence rate: {coincidence_rate}")
 
         key_rates = coincidence_rate * (
             -Q_s * self.error_correction_efficiency * self.shannon_entropy(E_s)
             + Q_single * (1 - self.shannon_entropy(e_1_u))
         )
         if self.debug:
-            print(
-                f"[DEBUG] Z basis coincidence rate: {self.emit_z_prob * self.rec_z_prob}"
-            )
-            print(
-                f"[DEBUG] X basis coincidence rate: {(1- self.emit_z_prob) *(1 - self.rec_z_prob)}"
-            )
-            print(f"[DEBUG] Coincidence rate: {coincidence_rate}")
             print(f"[DEBUG] Computed Secure Key Rate: {key_rates}")
             print(f"[DEBUG] Final Secure Key Rate: {np.clip(key_rates, 0.0 , 1.0)}")
             print("----------------------------------------------------------------")

@@ -1,4 +1,5 @@
 import numpy as np
+import array_statistics as st
 
 
 class Emitter:
@@ -22,12 +23,13 @@ class Emitter:
         rng : np.random.Generator
             NumPy random generator for stochastic sampling and reproducibility.
         """
+        self.protocol = simulation_parameters["protocol"]
 
         self.N = simulation_parameters["N"]
         self.mu = simulation_parameters["mu"]
         self.decoy_intensities = simulation_parameters["decoy_intensities"]
         self.state_probs = simulation_parameters["state_probs"]
-        self.z_basis_prob = simulation_parameters["emit_z_prob"]
+        self.basis_probs = simulation_parameters["basis_probs"]
         self.debug = simulation_parameters["debug"]
         self.rng = rng
 
@@ -48,6 +50,8 @@ class Emitter:
 
         if self.debug:
             print(f"[DEBUG] Source bits: {source_bits}")
+            print(f"[DEBUG] Source bits statistics:")
+            st.get_frequencies(source_bits, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return source_bits
@@ -65,12 +69,26 @@ class Emitter:
             Array of shape (N,) containing the basis choice for each bit
             (0 = rectilinear, 1 = diagonal).
         """
-        source_basis = self.rng.choice(
-            [0, 1], size=self.N, p=[self.z_basis_prob, 1 - self.z_basis_prob]
-        )
+        source_basis = np.zeros(self.N, dtype=int)
+
+        z_basis_prob = self.basis_probs["emit_z_prob"]
+        x_basis_prob = self.basis_probs["emit_x_prob"]
+
+        if self.protocol == "rfi-bb84":
+            source_basis = self.rng.choice(
+                [0, 1, 2],
+                size=self.N,
+                p=[z_basis_prob, x_basis_prob, 1 - z_basis_prob - x_basis_prob],
+            )
+        else:
+            source_basis = self.rng.choice(
+                [0, 1], size=self.N, p=[z_basis_prob, 1 - z_basis_prob]
+            )
 
         if self.debug:
             print(f"[DEBUG] Source basis: {source_basis}")
+            print(f"[DEBUG] Source basis statistics:")
+            st.get_frequencies(source_basis, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return source_basis
@@ -89,25 +107,31 @@ class Emitter:
             Array of shape (N,) where each entry indicates the chosen pulse state
             (0 = signal, 1... = decoy states).
         """
-        if not np.isclose(np.sum(self.state_probs), 1.0, atol=1e-10):
-            raise ValueError(
-                f"state probabilities should sum to ~ 1. Actual: {sum(np.array(self.state_probs)):.15g}"
+
+        state_sequence = np.zeros(self.N, dtype=int)
+
+        if self.protocol != "bb84":
+            if not np.isclose(np.sum(self.state_probs), 1.0, atol=1e-10):
+                raise ValueError(
+                    f"state probabilities should sum to ~ 1. Actual: {sum(np.array(self.state_probs)):.15g}"
+                )
+
+            decoy_num = int(len(self.decoy_intensities))
+
+            state_index = [0] + list(np.arange(1, decoy_num + 1))
+            state_probs = self.state_probs
+            state_probs = np.array(state_probs, dtype=np.float64) / np.sum(
+                state_probs
+            )  # Normalization of probabilities
+
+            state_sequence = self.rng.choice(
+                np.asarray(state_index), size=self.N, p=state_probs
             )
-
-        decoy_num = int(len(self.decoy_intensities))
-
-        state_index = [0] + list(np.arange(1, decoy_num + 1))
-        state_probs = self.state_probs
-        state_probs = np.array(state_probs, dtype=np.float64) / np.sum(
-            state_probs
-        )  # Normalization of probabilities
-
-        state_sequence = self.rng.choice(
-            np.asarray(state_index), size=self.N, p=state_probs
-        )
 
         if self.debug:
             print(f"[DEBUG] State choice: {state_sequence}")
+            print(f"[DEBUG] State choice statistics:")
+            st.get_frequencies(state_sequence, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return state_sequence
@@ -131,19 +155,24 @@ class Emitter:
             Photon number sequence of shape (N,) giving the number of photons
             generated in each pulse.
         """
-
-        intensities = [self.mu] + self.decoy_intensities  # Intensity list
-
         photon_nums = np.zeros(self.N, dtype=int)
 
-        for i in range(len(intensities)):
-            intensity_mask = state_choice == i
-            photon_nums[intensity_mask] = self.rng.poisson(
-                intensities[i], size=np.sum(intensity_mask)
-            )
+        if self.protocol == "bb84":
+            photon_nums = self.rng.poisson(self.mu, size=self.N)
+
+        else:
+            intensities = [self.mu] + self.decoy_intensities  # Intensity list
+
+            for i in range(len(intensities)):
+                intensity_mask = state_choice == i
+                photon_nums[intensity_mask] = self.rng.poisson(
+                    intensities[i], size=np.sum(intensity_mask)
+                )
 
         if self.debug:
             print(f"[DEBUG] Photon numbers: {photon_nums}")
+            print(f"[DEBUG] Photon numbers statistics:")
+            st.get_frequencies(photon_nums, print_freqs=True)
             print("----------------------------------------------------------------")
 
         return photon_nums

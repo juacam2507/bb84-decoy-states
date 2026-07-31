@@ -24,12 +24,16 @@ class ClassicalChannel:
         """
         self.N = simulation_parameters["N"]
         self.debug = simulation_parameters["debug"]
-
+        self.protocol = simulation_parameters["protocol"]
         self.signal_intensity = simulation_parameters["mu"]
-        self.decoy_intensities = simulation_parameters["decoy_intensities"]
-        self.intensities = np.array(
-            [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
-        )
+
+        if self.protocol == "bb84":
+            self.intensities = [self.signal_intensity]
+        else:
+            self.decoy_intensities = simulation_parameters["decoy_intensities"]
+            self.intensities = np.array(
+                [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
+            )
         self.state_num = len(self.intensities)
 
         self.error_correction_efficiency = simulation_parameters[
@@ -70,7 +74,7 @@ class ClassicalChannel:
             print(f"[DEBUG] State {state} Sent: {states_sent}")
             print(f"[DEBUG] Gain of state {state} = {states_detected/states_sent}")
             print("----------------------------------------------------------------")
-        
+
         return states_detected / states_sent
 
     def compute_gains(

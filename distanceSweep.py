@@ -19,6 +19,7 @@ class DistanceSweep:
         self.rng = rng
         self.simulation_parameters = simulation_parameters
         self.debug = simulation_parameters["debug"]
+        self.protocol = simulation_parameters["protocol"]
 
         self.n_sample = distance_sweep_params["n_sample"]
 
@@ -58,8 +59,15 @@ class DistanceSweep:
 
         for d in tqdm(self.distances, desc="Distances"):
             self.simulation_parameters["channel_properties"]["lenght"] = d
+
             quantum_channel = QuantumChannel(self.simulation_parameters, self.rng)
             classical_channel = ClassicalChannel(self.simulation_parameters)
+
+            if self.debug:
+                print(
+                    f"[DEBUG] New intensity: {quantum_channel.simulation_parameters["mu"]}"
+                )
+
             simulator = Simulator(
                 quantum_channel=quantum_channel, classical_channel=classical_channel
             )
@@ -88,6 +96,7 @@ class DistanceSweep:
 
         for d in tqdm(self.distances, desc="Distances"):
             self.simulation_parameters["channel_properties"]["lenght"] = d
+
             quantum_channel = QuantumChannel(self.simulation_parameters, self.rng)
             security_analysis = SecurityAnalysis(quantum_channel=quantum_channel)
 

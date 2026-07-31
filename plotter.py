@@ -75,7 +75,7 @@ class Plotter:
         ax.set_xticks(distances)
         ax.set_xticklabels([f"{d:.1f}" for d in distances], rotation=30, ha="center")
         ax.grid(True, which="both", linestyle="--", alpha=0.4)
-        ax.set_ylim(5e-6, 2e-3)
+        # ax.set_ylim(5e-7, 2e-3)
         ax.tick_params(axis="both", labelsize=14)
 
         legend_elements = [

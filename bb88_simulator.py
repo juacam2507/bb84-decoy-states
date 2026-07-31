@@ -45,7 +45,17 @@ class Simulator:
         self.classical_channel = classical_channel
         self.simulation_parameters = quantum_channel.simulation_parameters
         self.N = self.simulation_parameters["N"]
-        self.state_num = len(self.simulation_parameters["decoy_intensities"]) + 1
+        self.protocol = self.simulation_parameters["protocol"]
+        self.signal_intensity = self.simulation_parameters["mu"]
+
+        if self.protocol == "bb84":
+            self.intensities = [self.signal_intensity]
+        else:
+            self.decoy_intensities = self.simulation_parameters["decoy_intensities"]
+            self.intensities = np.array(
+                [self.signal_intensity] + self.decoy_intensities, dtype=np.float64
+            )
+        self.state_num = len(self.intensities)
         self.debug = self.simulation_parameters["debug"]
 
     def run(self, iterations: int) -> tuple:
@@ -103,9 +113,12 @@ class Simulator:
             # Compute gains for each state (Signal, weak, vacuum)
             gains = self.classical_channel.compute_gains(bob_bits, state_choice)
 
-            signal_gains.append(gains[0])
-            decoy_gains.append(gains[1])
-            vacuum_gains.append(gains[2])
+            if self.protocol == "bb84":
+                signal_gains.append(gains[0])
+            else:
+                signal_gains.append(gains[0])
+                decoy_gains.append(gains[1])
+                vacuum_gains.append(gains[2])
 
             # Perform basis reconciliation
             matching_basis_mask = self.classical_channel.basis_reconciliation(
@@ -121,13 +134,19 @@ class Simulator:
                 sifted_receptor_bits=sifted_bob_bits,
                 sifted_state_choice=sifted_state_choice,
             )
+            if self.protocol == "bb84":
+                signal_errors.append(qbers[0])
+            else:
+                signal_errors.append(qbers[0])
+                decoy_errors.append(qbers[1])
+                vacuum_errors.append(qbers[2])
 
-            signal_errors.append(qbers[0])
-            decoy_errors.append(qbers[1])
-            vacuum_errors.append(qbers[2])
-
-        state_gains = np.vstack([signal_gains, decoy_gains, vacuum_gains])
-        state_errors = np.vstack([signal_errors, decoy_errors, vacuum_errors])
+        if self.protocol == "bb84":
+            state_gains = np.vstack([signal_gains])
+            state_errors = np.vstack([signal_errors])
+        else:
+            state_gains = np.vstack([signal_gains, decoy_gains, vacuum_gains])
+            state_errors = np.vstack([signal_errors, decoy_errors, vacuum_errors])
 
         if self.debug:
             print(f"[DEBUG] Gains after {iterations} iterations:\n {state_gains}")

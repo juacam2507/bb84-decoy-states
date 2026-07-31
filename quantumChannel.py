@@ -9,18 +9,31 @@ class QuantumChannel:
     def __init__(self, simulation_parameters: dict, rng: np.random.Generator):
 
         self.simulation_parameters = simulation_parameters
-        self.debug = simulation_parameters["debug"]
+        self.debug = self.simulation_parameters["debug"]
+        self.protocol = self.simulation_parameters["protocol"]
+        self.rng = rng
 
-        self.beta = simulation_parameters["channel_properties"]["beta"]
-        self.l = simulation_parameters["channel_properties"]["lenght"]
-        self.t_bob = simulation_parameters["detector_properties"]["receiver_transmit"]
-        self.eta_d = simulation_parameters["detector_properties"]["detector_efficiency"]
-
-        self.alice = Emitter(simulation_parameters=simulation_parameters, rng=rng)
-        self.bob = Receiver(simulation_parameters=simulation_parameters, rng=rng)
+        self.beta = self.simulation_parameters["channel_properties"]["beta"]
+        self.l = self.simulation_parameters["channel_properties"]["lenght"]
+        self.t_bob = self.simulation_parameters["detector_properties"][
+            "receiver_transmit"
+        ]
+        self.eta_d = self.simulation_parameters["detector_properties"][
+            "detector_efficiency"
+        ]
 
         self.eta = self.channel_efficiency(self.l)
         self.original_eta = self.eta
+
+        if self.protocol == "bb84":
+            self.simulation_parameters["mu"] = self.eta
+
+        self.alice = Emitter(
+            simulation_parameters=self.simulation_parameters, rng=self.rng
+        )
+        self.bob = Receiver(
+            simulation_parameters=self.simulation_parameters, rng=self.rng
+        )
 
         self.execute_attack = simulation_parameters["attack_properties"][
             "execute_attack"

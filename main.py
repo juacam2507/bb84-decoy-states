@@ -4,17 +4,21 @@ from yieldAnalysis import YieldAnalysis
 from dataHandler import DataHandler
 
 simulation_parameters = {
-    "protocol": "decoy-bb48",  # Type of protocol. Choose from "standard-bb84", "decoy-bb84", "rfi-bb84"
+    "protocol": "bb84",  # Type of protocol. Choose from "bb84", "decoy-bb84", "rfi-bb84"
     "iterations": 10,
-    "N": 1_000_000,  # Number of generated pulses
+    "N": 10000000,  # Number of generated pulses
     "mu": 0.5,  # Signal intensity
     "decoy_intensities": [0.025, 0.0],  # Decoy intensities
-    "state_probs": [0.9, 0.09, 0.01],  # State probabilities
-    "emit_z_prob": 0.5,
-    "rec_z_prob": 0.5,
+    "state_probs": [0.5, 0.25, 0.25],  # State probabilities (Signal, weak, Vacuum)
+    "basis_probs": {
+        "emit_z_prob": 0.5,
+        "emit_x_prob": 0.25,  # Only used for RFI. Otherwise computed from Z basis prob
+        "rec_z_prob": 0.5,
+        "rec_x_prob": 0.25,  # Only used for RFI. Otherwise computed from Z basis prob
+    },
     "channel_properties": {
         "beta": 0.21,  # Loss coefficient (dB/Km)
-        "lenght": 10,  # Lenght of the channel (Km)
+        "lenght": 1,  # Lenght of the channel (Km)
     },
     "detector_properties": {
         "receiver_transmit": 0.225,  # Receiver transmittance
@@ -36,8 +40,8 @@ distance_sweep_params = {
     "run_sweep": True,
     "n_sample": 10,
     "distance_control": {
-        "d_min": 20,
-        "d_max": 30,
+        "d_min": 10.0,
+        "d_max": 45.0,
         "alpha_dist": 1.0,  # Controls the concentration of distances sampled
     },
     "iteration_control": {
