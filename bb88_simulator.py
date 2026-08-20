@@ -109,9 +109,16 @@ class Simulator:
             alice_bits, alice_basis, state_choice, bob_basis, bob_bits = (
                 self.quantum_channel.send_pulses()
             )
+            if self.protocol == "rfi-bb84":
+                gains = self.classical_channel.compute_gains_rfi(
+                    receptor_bits=bob_bits,
+                    source_basis=alice_basis,
+                    receptor_basis=bob_basis,
+                    state_choice=state_choice,
+                )
 
-            # Compute gains for each state (Signal, weak, vacuum)
-            gains = self.classical_channel.compute_gains(bob_bits, state_choice)
+            else:
+                gains = self.classical_channel.compute_gains(bob_bits, state_choice)
 
             if self.protocol == "bb84":
                 signal_gains.append(gains[0])
